@@ -67,6 +67,7 @@ class _PeerTabPageState extends State<PeerTabPage>
       ),
       ({dynamic hint}) => gFFI.groupModel.pull(force: hint == null),
     ),
+    _TabEntry(const AdminPresencePane()),
   ];
   RelativeRect? mobileTabContextMenuPos;
 
@@ -119,7 +120,6 @@ class _PeerTabPageState extends State<PeerTabPage>
                 child: selectionWrap(Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    if (isDesktop) _createAdminPresenceButton(context),
                     Expanded(
                         child: visibleContextMenuListener(
                             _createSwitchBar(context))),
@@ -190,7 +190,9 @@ class _PeerTabPageState extends State<PeerTabPage>
   Widget _createPeersView() {
     final model = Provider.of<PeerTabModel>(context);
     Widget child;
-    if (model.visibleEnabledOrderedIndexs.isEmpty) {
+    if (model.currentTab == PeerTabIndex.admin.index) {
+      child = entries[PeerTabIndex.admin.index].widget;
+    } else if (model.visibleEnabledOrderedIndexs.isEmpty) {
       child = visibleContextMenuListener(Row(
         children: [Expanded(child: InkWell())],
       ));
@@ -211,15 +213,22 @@ class _PeerTabPageState extends State<PeerTabPage>
   }
 
   Widget _createAdminPresenceButton(BuildContext context) {
-    final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    final selected = gFFI.peerTabModel.currentTab == PeerTabIndex.admin.index;
+    final color = selected
+        ? MyTheme.tabbar(context).selectedTextColor
+        : Theme.of(context).textTheme.titleLarge?.color;
     return _hoverAction(
       context: context,
-      toolTip: translate('Admin - Online Devices'),
-      onTap: () => showAdminPresenceDialog(context),
+      toolTip: translate('Admin online devices'),
+      onTap: () async {
+        await handleTabSelection(PeerTabIndex.admin.index);
+        await bind.setLocalFlutterOption(
+            k: kOptionPeerTabIndex, v: PeerTabIndex.admin.index.toString());
+      },
       child: Icon(
         Icons.admin_panel_settings_outlined,
         size: 18,
-        color: textColor,
+        color: color,
       ),
     );
   }
@@ -568,6 +577,7 @@ class _PeerTabPageState extends State<PeerTabPage>
   List<Widget> _landscapeRightActions(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
     return [
+      _createAdminPresenceButton(context),
       const PeerSearchBar().marginOnly(right: 13),
       _createRefresh(
           index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
@@ -579,7 +589,8 @@ class _PeerTabPageState extends State<PeerTabPage>
       ),
       _createPeerViewTypeSwitch(context),
       Offstage(
-        offstage: model.currentTab == PeerTabIndex.recent.index,
+        offstage: model.currentTab == PeerTabIndex.recent.index ||
+            model.currentTab == PeerTabIndex.admin.index,
         child: PeerSortDropdown(),
       ),
       Offstage(
@@ -635,6 +646,7 @@ class _PeerTabPageState extends State<PeerTabPage>
 
     // Always show search, refresh
     List<Widget> actions = [
+      _createAdminPresenceButton(context),
       const PeerSearchBar(),
       if (model.currentTab == PeerTabIndex.ab.index)
         _createRefresh(
@@ -645,7 +657,9 @@ class _PeerTabPageState extends State<PeerTabPage>
     ];
     final List<Widget> dynamicActions = [
       if (model.currentTabCachedPeers.isNotEmpty) _createMultiSelection(),
-      if (model.currentTab != PeerTabIndex.recent.index) PeerSortDropdown(),
+      if (model.currentTab != PeerTabIndex.recent.index &&
+          model.currentTab != PeerTabIndex.admin.index)
+        PeerSortDropdown(),
       if (model.currentTab == PeerTabIndex.ab.index) _toggleTags()
     ];
     final rightWidth = availableWidth -

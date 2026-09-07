@@ -6,7 +6,11 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 ### Added
 
-- Implemented the Windows Flutter admin-presence UI: desktop icon beside Recent Sessions, in-memory token/JWT login, online-device list, refresh/logout, and standard click-to-connect behavior.
+- Reworked the admin-presence UI from a popup dialog into an embedded peer-tab pane ordered beside Recent Sessions.
+- Added Settings > Network > Admin Presence configuration for the admin API server address and token, so administrators do not have to enter them each time.
+- Added friendly device-name display above the RustDesk ID when the API or local peer caches provide a name.
+- Added a live server status indicator, 5-second auto-refresh, local-admin-client filtering, greyed-out stale/offline device entries with offline duration, and an `X` action to delete stale entries.
+- Implemented the Windows Flutter admin-presence UI: desktop entry beside Recent Sessions, online-device list, refresh/logout, and standard click-to-connect behavior.
 - Deployed the release build to `rd-endpoint-01` (`C:\RustDeskAdmin`) and validated online/offline/online presence behavior against the lab admin API.
 - Fixed `NINA-LAPTOP` lab-client configuration after a connection attempt failed because the admin API pointed to the lab server while the normal RustDesk connection flow still used the public rendezvous server.
 - Initial development environment and integration contract documentation for the administrator-only online-device view.
@@ -18,5 +22,6 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 ### Changed
 
-- Added the persisted non-secret admin server address option (`admin-presence-server`); credentials are not persisted.
+- The admin-presence pane now auto-authenticates from saved settings and directs users to Settings > Network when configuration is missing.
+- Added persisted admin-presence settings for the server address (`admin-presence-server`) and admin token (`admin-presence-token`).
 - Updated documented lab IPs to reflect actual Hyper-V "Default Switch" addressing (`rd-admin-server` 172.27.17.85, `rd-endpoint-01` 172.27.26.223) instead of the originally planned external-switch static addresses.

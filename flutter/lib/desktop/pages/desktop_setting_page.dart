@@ -1795,6 +1795,13 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
                   title: 'ID/Relay Server',
                   onTap: () => showServerSettings(gFFI.dialogManager, setState),
                 ),
+              if (!hideServer && isDesktop) divider,
+              if (!hideServer && isDesktop)
+                listTile(
+                  icon: Icons.admin_panel_settings_outlined,
+                  title: 'Admin Presence',
+                  onTap: _showAdminPresenceSettings,
+                ),
               if (!hideProxy && !hideServer) divider,
               if (!hideProxy)
                 listTile(
@@ -1858,6 +1865,70 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
         ),
       ],
     );
+  }
+
+  Future<void> _showAdminPresenceSettings() async {
+    final serverController = TextEditingController(
+      text: bind.mainGetLocalOption(key: kOptionAdminPresenceServer),
+    );
+    final tokenController = TextEditingController(
+      text: bind.mainGetLocalOption(key: kOptionAdminPresenceToken),
+    );
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(translate('Admin Presence')),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: serverController,
+                decoration: InputDecoration(
+                  labelText: translate('Admin server address (host:port)'),
+                  hintText: '172.27.17.85:21114',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: tokenController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: translate('Admin token'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(translate('Cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await bind.mainSetLocalOption(
+                key: kOptionAdminPresenceServer,
+                value: serverController.text.trim(),
+              );
+              await bind.mainSetLocalOption(
+                key: kOptionAdminPresenceToken,
+                value: tokenController.text,
+              );
+              if (mounted) {
+                Navigator.of(context).pop();
+                showToast(translate('Successful'));
+                setState(() {});
+              }
+            },
+            child: Text(translate('OK')),
+          ),
+        ],
+      ),
+    );
+    serverController.dispose();
+    tokenController.dispose();
   }
 }
 

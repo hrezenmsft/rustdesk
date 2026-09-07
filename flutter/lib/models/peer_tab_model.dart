@@ -16,19 +16,21 @@ enum PeerTabIndex {
   lan,
   ab,
   group,
+  admin,
 }
 
 class PeerTabModel with ChangeNotifier {
   WeakReference<FFI> parent;
   int get currentTab => _currentTab;
   int _currentTab = 0; // index in tabNames
-  static const int maxTabCount = 5;
+  static const int maxTabCount = 6;
   static const List<String> tabNames = [
     'Recent sessions',
     'Favorites',
     'Discovered',
     'Address book',
     'Accessible devices',
+    'Admin online devices',
   ];
   static const List<IconData> icons = [
     Icons.access_time_filled,
@@ -36,6 +38,7 @@ class PeerTabModel with ChangeNotifier {
     Icons.explore,
     IconFont.addressBook,
     IconFont.deviceGroupFill,
+    Icons.admin_panel_settings_outlined,
   ];
   List<bool> isEnabled = List.from([
     true,
@@ -43,6 +46,7 @@ class PeerTabModel with ChangeNotifier {
     !isWeb && bind.mainGetLocalOption(key: "disable-discovery-panel") != "Y",
     !(bind.isDisableAb() || bind.isDisableAccount()),
     !(bind.isDisableGroupPanel() || bind.isDisableAccount()),
+    isDesktop,
   ]);
   final List<bool> _isVisible = List.filled(maxTabCount, true, growable: false);
   List<bool> get isVisibleEnabled => () {
@@ -52,10 +56,11 @@ class PeerTabModel with ChangeNotifier {
         }
         return list;
       }();
-  final List<int> orders =
-      List.generate(maxTabCount, (index) => index, growable: false);
+  final List<int> orders = [0, 1, 2, 3, 4, 5];
   List<int> get visibleEnabledOrderedIndexs =>
-      orders.where((e) => isVisibleEnabled[e]).toList();
+      orders
+          .where((e) => e != PeerTabIndex.admin.index && isVisibleEnabled[e])
+          .toList();
   List<Peer> _selectedPeers = List.empty(growable: true);
   List<Peer> get selectedPeers => _selectedPeers;
   bool _multiSelectionMode = false;
@@ -235,6 +240,9 @@ class PeerTabModel with ChangeNotifier {
   }
 
   _trySetCurrentTabToFirstVisibleEnabled() {
+    if (_currentTab == PeerTabIndex.admin.index) {
+      return;
+    }
     if (!visibleEnabledOrderedIndexs.contains(_currentTab)) {
       if (visibleEnabledOrderedIndexs.isNotEmpty) {
         _currentTab = visibleEnabledOrderedIndexs.first;

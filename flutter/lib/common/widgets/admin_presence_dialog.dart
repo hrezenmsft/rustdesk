@@ -1,152 +1,182 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/models/admin_presence_model.dart';
+import 'package:flutter_hbb/models/peer_model.dart';
 import 'package:provider/provider.dart';
 
 import '../../common.dart';
+import '../../models/platform_model.dart';
+import 'peer_card.dart';
 
-/// Dialog listing devices currently online with the self-hosted admin
-/// presence API, and allowing the user to connect to one of them using
-/// RustDesk's normal connection flow (password/consent are never bypassed).
-class AdminPresenceDialog extends StatefulWidget {
-  const AdminPresenceDialog({Key? key}) : super(key: key);
+/// Embedded tab-pane listing devices currently known to the self-hosted
+/// admin presence API. Selecting an online device calls RustDesk's normal
+/// connection flow; target password/consent/permissions are never bypassed.
+class AdminPresencePane extends StatefulWidget {
+  const AdminPresencePane({Key? key}) : super(key: key);
 
   @override
-  State<AdminPresenceDialog> createState() => _AdminPresenceDialogState();
+  State<AdminPresencePane> createState() => _AdminPresencePaneState();
 }
 
-class _AdminPresenceDialogState extends State<AdminPresenceDialog> {
-  late TextEditingController _serverController;
-  final _tokenController = TextEditingController();
+class _AdminPresencePaneState extends State<AdminPresencePane> {
+  late final AdminPresenceModel _model;
+  Timer? _offlineTimer;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
-    final model = Provider.of<AdminPresenceModel>(context, listen: false);
-    _serverController = TextEditingController(text: model.server);
+    _model = AdminPresenceModel();
+    bind.mainLoadRecentPeers();
+    bind.mainLoadFavPeers();
+    bind.mainLoadLanPeers();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshFromConfig());
+    _offlineTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && !_model.loading) {
+        _refreshFromConfig();
+      }
+    });
   }
 
   @override
   void dispose() {
-    _serverController.dispose();
-    _tokenController.dispose();
+    _offlineTimer?.cancel();
+    _refreshTimer?.cancel();
+    _model.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final model = Provider.of<AdminPresenceModel>(context);
-    return AlertDialog(
-      title: Text(translate('Admin - Online Devices')),
-      content: SizedBox(
-        width: 420,
-        child: model.isLoggedIn
-            ? _buildDeviceList(context, model)
-            : _buildLogin(context, model),
+    return ChangeNotifierProvider<AdminPresenceModel>.value(
+      value: _model,
+      child: Consumer<AdminPresenceModel>(
+        builder: (context, model, child) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: model.isLoggedIn
+                ? _buildDeviceList(context, model)
+                : _buildConfigurePrompt(context, model),
+          );
+        },
       ),
-      actions: [
-        if (model.isLoggedIn)
-          TextButton(
-            onPressed: () => model.logout(),
-            child: Text(translate('Logout')),
-          ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(translate('Close')),
-        ),
-      ],
     );
   }
 
-  Widget _buildLogin(BuildContext context, AdminPresenceModel model) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: _serverController,
-          decoration: InputDecoration(
-            labelText: translate('Admin server address (host:port)'),
-            hintText: '192.168.0.10:21114',
-          ),
-          onChanged: model.setServer,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _tokenController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: translate('Admin token'),
-          ),
-          onSubmitted: (_) => _doLogin(model),
-        ),
-        const SizedBox(height: 12),
-        if (model.error != null)
-          Text(model.error!, style: const TextStyle(color: Colors.red)),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton(
-            onPressed: model.loading ? null : () => _doLogin(model),
-            child: model.loading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(translate('Login')),
-          ),
-        ),
-      ],
-    );
+  Future<void> _refreshFromConfig() async {
+    if (!mounted) return;
+    if (!await _model.loginWithSavedToken()) return;
+    await _model.refreshDevices();
   }
 
-  Future<void> _doLogin(AdminPresenceModel model) async {
-    final ok = await model.login(_tokenController.text);
-    if (ok) {
-      _tokenController.clear();
-      await model.refreshDevices();
-    }
+  Widget _buildConfigurePrompt(BuildContext context, AdminPresenceModel model) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              translate('Admin online devices'),
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              translate('Configure admin presence in Settings > Network'),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            if (model.error != null)
+              Text(
+                model.error!,
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.center,
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton(
+                    onPressed: () =>
+                        DesktopSettingPage.switch2page(SettingsTabKey.network),
+                    child: Text(translate('Open Settings')),
+                  ),
+                  OutlinedButton(
+                    onPressed: model.loading ? null : _refreshFromConfig,
+                    child: model.loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(translate('Retry')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDeviceList(BuildContext context, AdminPresenceModel model) {
+    final onlineCount = model.devices.where((d) => d.online).length;
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
+            getOnline(8, model.serverOnline),
             Expanded(
-                child: Text(
-                    translate('${model.devices.length} device(s) online'))),
-            IconButton(
-              tooltip: translate('Refresh'),
-              icon: const Icon(Icons.refresh),
+              child: Text(
+                '${translate('Server')}: ${model.server}  -  '
+                '$onlineCount/${model.devices.length} ${translate('Online')}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            TextButton.icon(
               onPressed: model.loading ? null : () => model.refreshDevices(),
+              icon: model.loading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+              label: Text(translate('Refresh')),
+            ),
+            TextButton(
+              onPressed: () => model.logout(),
+              child: Text(translate('Logout')),
             ),
           ],
         ),
         if (model.error != null)
-          Text(model.error!, style: const TextStyle(color: Colors.red)),
-        SizedBox(
-          height: 320,
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(model.error!, style: const TextStyle(color: Colors.red)),
+          ),
+        Expanded(
           child: model.devices.isEmpty
               ? Center(child: Text(translate('No devices online')))
               : ListView.builder(
-                  shrinkWrap: true,
                   itemCount: model.devices.length,
                   itemBuilder: (context, index) {
                     final d = model.devices[index];
-                    return ListTile(
-                      leading: const Icon(Icons.desktop_windows),
-                      title: Text(d.id),
-                      subtitle: Text(
-                          '${translate('Last seen')}: ${d.lastSeenSecs}s'),
-                      onTap: () {
-                        // Reuse RustDesk's normal connection flow: this
-                        // still requires the target's password/consent,
-                        // nothing is bypassed here.
-                        Navigator.of(context).pop();
-                        connect(context, d.id);
-                      },
+                    return _AdminPresenceDeviceCard(
+                      device: d,
+                      name: _displayName(d),
+                      onConnect: d.online ? () => connect(context, d.id) : null,
+                      onDelete: d.online ? null : () => model.deleteDevice(d.id),
                     );
                   },
                 ),
@@ -154,14 +184,146 @@ class _AdminPresenceDialogState extends State<AdminPresenceDialog> {
       ],
     );
   }
+
+  String _displayName(AdminOnlineDevice device) {
+    if (device.name.isNotEmpty) {
+      return device.name;
+    }
+    final peer = _findKnownPeer(device.id);
+    if (peer == null) {
+      return device.id;
+    }
+    if (peer.alias.isNotEmpty) {
+      return peer.alias;
+    }
+    if (peer.hostname.isNotEmpty) {
+      return peer.hostname;
+    }
+    if (peer.username.isNotEmpty) {
+      return peer.username;
+    }
+    return peer.id;
+  }
+
+  Peer? _findKnownPeer(String id) {
+    final sources = <List<Peer>>[
+      gFFI.recentPeersModel.peers,
+      gFFI.favoritePeersModel.peers,
+      gFFI.lanPeersModel.peers,
+      gFFI.abModel.peersModel.peers,
+      gFFI.groupModel.peersModel.peers,
+    ];
+    for (final peers in sources) {
+      for (final peer in peers) {
+        if (peer.id == id) {
+          return peer;
+        }
+      }
+    }
+    return null;
+  }
 }
 
-Future<void> showAdminPresenceDialog(BuildContext context) async {
-  await showDialog(
-    context: context,
-    builder: (context) => ChangeNotifierProvider(
-      create: (_) => AdminPresenceModel(),
-      child: const AdminPresenceDialog(),
-    ),
-  );
+class _AdminPresenceDeviceCard extends StatelessWidget {
+  final AdminOnlineDevice device;
+  final String name;
+  final VoidCallback? onConnect;
+  final VoidCallback? onDelete;
+
+  const _AdminPresenceDeviceCard({
+    required this.device,
+    required this.name,
+    required this.onConnect,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitleStyle =
+        Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey);
+    return Opacity(
+      opacity: device.online ? 1.0 : 0.48,
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onConnect,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: str2color(device.id, 0x7f),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.desktop_windows, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          getOnline(8, device.online),
+                          Expanded(
+                            child: Text(
+                              name,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        device.id,
+                        overflow: TextOverflow.ellipsis,
+                        style: subtitleStyle,
+                      ),
+                      Text(
+                        device.online
+                            ? '${translate('Last seen')}: ${device.lastSeenSecs}s'
+                            : '${translate('Offline for')}: ${_formatDuration(_offlineFor())}',
+                        style: subtitleStyle,
+                      ),
+                    ],
+                  ),
+                ),
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: translate('Delete'),
+                    icon: const Icon(Icons.close),
+                    onPressed: onDelete,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Duration _offlineFor() {
+    if (device.offlineSinceMs == 0) return Duration.zero;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return Duration(milliseconds: now - device.offlineSinceMs);
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.inDays > 0) {
+      return '${duration.inDays}d ${duration.inHours % 24}h';
+    }
+    if (duration.inHours > 0) {
+      return '${duration.inHours}h ${duration.inMinutes % 60}m';
+    }
+    if (duration.inMinutes > 0) {
+      return '${duration.inMinutes}m ${duration.inSeconds % 60}s';
+    }
+    return '${duration.inSeconds}s';
+  }
 }

@@ -34,9 +34,11 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
 
   ### Implemented Admin Presence Client
 
-  - Added a desktop-only administrator icon immediately beside the existing Recent Sessions tab bar.
-  - Added a login/device-list dialog that persists only the non-secret server address (`host:port`) in the local Flutter options store. The shared admin token and issued JWT remain in memory only.
-  - The dialog calls `POST /admin/v1/auth/login`, then `GET /admin/v1/devices?status=online` using the bearer JWT. Selecting a device calls the existing `connect(context, id)` flow, preserving target password, consent, and permission checks.
+  - Added a desktop-only **Admin online devices** pane directly in the existing peer-tab space, ordered beside Recent Sessions.
+  - Added an **Admin Presence** entry under Settings > Network for the admin API server address (`host:port`) and admin token, stored in the local Flutter options store for the lab/admin workflow.
+  - The pane calls `POST /admin/v1/auth/login`, then `GET /admin/v1/devices?status=online` using the bearer JWT. Selecting a device calls the existing `connect(context, id)` flow, preserving target password, consent, and permission checks.
+  - The right-side admin action opens the embedded pane without adding a draggable left-side tab item. The pane auto-refreshes every 5 seconds, shows whether the admin API server is reachable, filters out the local admin client's own RustDesk ID, and keeps previously seen devices as greyed-out offline/stale entries with an offline duration and an `X` delete action.
+  - The device list displays a friendly device name above the RustDesk ID when the API or local peer caches provide one; otherwise it falls back to the ID.
   - Deployment validation copied the release build to `rd-endpoint-01` at `C:\RustDeskAdmin` and launched it in the active `lab` desktop session. The admin API listed device `486567681` online, removed it after the registration timeout when RustDesk was stopped, and listed it again after relaunch.
   - If the admin list works but connection fails with "target device is offline or does not exist", check the admin client's normal RustDesk server settings. This was observed on `NINA-LAPTOP` when its admin API setting pointed to `172.27.17.85:21114` but the RustDesk connection flow still used the public server (`rs-ny.rustdesk.com`). Fix by setting `rendezvous_server = '172.27.17.85:21116'`, `custom-rendezvous-server = '172.27.17.85'`, `relay-server = '172.27.17.85'`, and the lab server key in `RustDesk2.toml`.
 

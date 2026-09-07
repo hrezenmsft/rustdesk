@@ -96,9 +96,9 @@ const String kOptionWhitelist = "whitelist";
 const String kOptionIdWhitelist = "id-whitelist";
 const String kOptionEnableAbr = "enable-abr";
 const String kOptionEnableRecordSession = "enable-record-session";
-// Non-secret admin presence API address ("host:port"). The admin token is
-// never persisted and must be re-entered each session.
 const String kOptionAdminPresenceServer = "admin-presence-server";
+const String kOptionAdminPresenceToken = "admin-presence-token";
+const String kOptionAdminPresenceDevices = "admin-presence-devices";
 const String kOptionDirectServer = "direct-server";
 const String kOptionDirectAccessPort = "direct-access-port";
 const String kOptionAllowAutoDisconnect = "allow-auto-disconnect";

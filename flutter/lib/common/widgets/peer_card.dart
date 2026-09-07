@@ -823,6 +823,8 @@ abstract class BasePeerCard extends StatelessWidget {
               break;
             case PeerTabIndex.group:
               break;
+            case PeerTabIndex.admin:
+              break;
           }
           if (tab != PeerTabIndex.ab) {
             showToast(translate('Successful'));
