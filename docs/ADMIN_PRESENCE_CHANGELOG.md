@@ -6,6 +6,11 @@ Entries are grouped by date, newest first. Each dated section corresponds to one
 
 ## Unreleased
 
+### Changed
+
+- Expanded `docs/ADMIN_PRESENCE_DEVELOPMENT.md`'s "How to Deploy" section with a new "Production release package" subsection detailing the no-build install path in full: downloading the installer via `gh release download` or the web UI, running it, configuring server/admin-API settings, verifying the admin pane, upgrading, and uninstalling. The prior copy-the-Release-folder instructions were kept as a "Deploying an unpackaged build (lab/dev only)" subsection.
+- Added a "Quick start" summary of the recommended prebuilt-installer path to `README.md`, linking to the expanded development-doc section and the Releases page, ahead of the from-source build instructions.
+
 ### Added
 
 - Added inline rename ("edit"/pencil icon) on each device row in the admin online-devices pane. The custom display name is stored **locally on this client only** (never sent to the server), overrides the reported hostname, and persists across refreshes/reconnects until the administrator renames it again or deletes the device row.

@@ -108,7 +108,28 @@ This fork uses RustDesk's existing self-extracting "portable" installer packer (
 
 ## How to Deploy
 
-- The Windows admin client and any managed Windows endpoints are deployed the same way: copy the contents of `flutter/build/windows/x64/runner/Release/` (the `.exe` plus all sibling DLLs) to the target machine — there is no separate installer required for lab/dev deployments (see the previous section for producing a distributable installer instead).
+### Production release package (recommended — no local build required)
+
+Every `vX.Y.Z` tag on this repo produces a signed-off, self-extracting Windows installer (see **How to Package a Windows Installer** above for how it's built) attached to the GitHub release: `rustdeskadmin-client-<version>-install.exe`. **End users should install from this package instead of building from source** — it already contains the Admin Devices pane, no separate "admin" build step is needed.
+
+1. **Download the installer** from the Releases page:
+   ```powershell
+   # find the latest tag
+   gh release list --repo hrezenmsft/rustdeskadmin-client --limit 1
+   # download the installer asset for that tag (replace <tag>/<version> from the output above)
+   gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-install.exe" --dir .
+   ```
+   or download it manually from `https://github.com/hrezenmsft/rustdeskadmin-client/releases`.
+2. **Run the installer** on the target Windows machine (`rustdeskadmin-client-<version>-install.exe`). This performs a full system install (Program Files, a Windows service, an uninstall entry) and will stop/replace any other running `rustdesk.exe` process of the same name already on the machine — close any in-progress sessions first.
+3. **Point the client at your server** (Settings > Network): set the ID/Relay server address and key to your `rustdeskadmin-server` deployment.
+4. **Configure the admin pane** (Settings > Network > Admin Presence): set the admin API's `host:port` (default port `21114`) and the plaintext admin token — both must point at the **same** server deployment as step 3, or the device list will show devices the connect flow can't reach (or vice versa).
+5. **Verify**: the new admin icon (first icon on the left of the tab bar) should open the Admin Devices pane and list currently-online devices registered with that server, refreshing automatically; selecting one launches the normal connection flow.
+6. **Upgrading**: download the newer installer and run it the same way — it replaces the installed binaries and Windows service in place; local per-device rename labels and other client-local settings are preserved (they live outside the install directory).
+7. **Uninstalling**: `"C:\Program Files\RustDesk\RustDesk.exe" --uninstall` (or use the uninstall entry created in Windows "Apps & features").
+
+### Deploying an unpackaged build (lab/dev only)
+
+- The Windows admin client and any managed Windows endpoints can also be deployed by copying the contents of `flutter/build/windows/x64/runner/Release/` (the `.exe` plus all sibling DLLs) to the target machine — there is no separate installer required for lab/dev deployments (see the previous section for producing a distributable installer instead).
 - Before overwriting a running deployment, stop the existing `rustdesk.exe` process on the target machine (or use a scheduled task / service wrapper if you manage it that way) so the copy isn't blocked by a locked binary.
 - Point the deployed client at your self-hosted rendezvous/relay server in Settings > Network (ID/Relay server + key), and separately configure Settings > Network > Admin Presence with the admin API's `host:port` and admin token — both must reference the **same** self-hosted server deployment, or the admin device list will show devices that "connect" flow can't reach (or vice versa).
 - There is no separate build/deploy path for the admin API client logic; it ships inside the same `rustdesk.exe` as the rest of the Flutter app.

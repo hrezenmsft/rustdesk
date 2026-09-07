@@ -39,6 +39,10 @@ This repository is a **private fork of the official [rustdesk/rustdesk](https://
 
 ### Quick start (see the development doc for full detail)
 
+**Recommended: install from the prebuilt Windows installer — no build required.** Download `rustdeskadmin-client-<version>-install.exe` from the **[Releases page](https://github.com/hrezenmsft/rustdeskadmin-client/releases)**, run it on the target machine, then point it at your `rustdeskadmin-server` deployment in Settings > Network (and Settings > Network > Admin Presence for the admin API host/token). See **[docs/ADMIN_PRESENCE_DEVELOPMENT.md § Production release package](docs/ADMIN_PRESENCE_DEVELOPMENT.md#production-release-package-recommended--no-local-build-required)** for the full walkthrough, including upgrading and uninstalling.
+
+Building from source instead:
+
 ```powershell
 git clone https://github.com/hrezenmsft/rustdeskadmin-client.git
 cd rustdeskadmin-client
