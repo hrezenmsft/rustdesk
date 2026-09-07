@@ -38,6 +38,7 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
   - Added a login/device-list dialog that persists only the non-secret server address (`host:port`) in the local Flutter options store. The shared admin token and issued JWT remain in memory only.
   - The dialog calls `POST /admin/v1/auth/login`, then `GET /admin/v1/devices?status=online` using the bearer JWT. Selecting a device calls the existing `connect(context, id)` flow, preserving target password, consent, and permission checks.
   - Deployment validation copied the release build to `rd-endpoint-01` at `C:\RustDeskAdmin` and launched it in the active `lab` desktop session. The admin API listed device `486567681` online, removed it after the registration timeout when RustDesk was stopped, and listed it again after relaunch.
+  - If the admin list works but connection fails with "target device is offline or does not exist", check the admin client's normal RustDesk server settings. This was observed on `NINA-LAPTOP` when its admin API setting pointed to `172.27.17.85:21114` but the RustDesk connection flow still used the public server (`rs-ny.rustdesk.com`). Fix by setting `rendezvous_server = '172.27.17.85:21116'`, `custom-rendezvous-server = '172.27.17.85'`, `relay-server = '172.27.17.85'`, and the lab server key in `RustDesk2.toml`.
 
 ## Change Discipline
 

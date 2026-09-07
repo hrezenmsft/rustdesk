@@ -8,6 +8,7 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 - Implemented the Windows Flutter admin-presence UI: desktop icon beside Recent Sessions, in-memory token/JWT login, online-device list, refresh/logout, and standard click-to-connect behavior.
 - Deployed the release build to `rd-endpoint-01` (`C:\RustDeskAdmin`) and validated online/offline/online presence behavior against the lab admin API.
+- Fixed `NINA-LAPTOP` lab-client configuration after a connection attempt failed because the admin API pointed to the lab server while the normal RustDesk connection flow still used the public rendezvous server.
 - Initial development environment and integration contract documentation for the administrator-only online-device view.
 - Completed Windows dev toolchain setup on `NINA-LAPTOP`: Rust 1.75.0 (pinned), rustfmt, VS2022 Build Tools/C++, LLVM, Python 3.12, CMake/Ninja/NASM, Flutter 3.24.5, vcpkg @ `9e593bb18ea69cc5095e012465dcd675a822ed0d`.
 - Diagnosed and completed the static (`x64-windows-static`) vcpkg FFmpeg build required by the upstream `hwcodec` dependency; root cause was RAM exhaustion from default build parallelism on this laptop, fixed with `VCPKG_MAX_CONCURRENCY=1` / `CL=/MP1`.
