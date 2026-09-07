@@ -37,6 +37,7 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
   - Added a desktop-only administrator icon immediately beside the existing Recent Sessions tab bar.
   - Added a login/device-list dialog that persists only the non-secret server address (`host:port`) in the local Flutter options store. The shared admin token and issued JWT remain in memory only.
   - The dialog calls `POST /admin/v1/auth/login`, then `GET /admin/v1/devices?status=online` using the bearer JWT. Selecting a device calls the existing `connect(context, id)` flow, preserving target password, consent, and permission checks.
+  - Deployment validation copied the release build to `rd-endpoint-01` at `C:\RustDeskAdmin` and launched it in the active `lab` desktop session. The admin API listed device `486567681` online, removed it after the registration timeout when RustDesk was stopped, and listed it again after relaunch.
 
 ## Change Discipline
 
