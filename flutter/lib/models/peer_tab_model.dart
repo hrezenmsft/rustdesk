@@ -16,6 +16,8 @@ enum PeerTabIndex {
   lan,
   ab,
   group,
+  // Admin-presence customization for this Windows client version: logical
+  // index for the embedded online-device pane.
   admin,
 }
 
@@ -59,6 +61,8 @@ class PeerTabModel with ChangeNotifier {
   final List<int> orders = [0, 1, 2, 3, 4, 5];
   List<int> get visibleEnabledOrderedIndexs =>
       orders
+          // Admin-presence customization: the admin pane uses a dedicated
+          // left-side icon instead of the draggable normal tab strip.
           .where((e) => e != PeerTabIndex.admin.index && isVisibleEnabled[e])
           .toList();
   List<Peer> _selectedPeers = List.empty(growable: true);
@@ -240,6 +244,8 @@ class PeerTabModel with ChangeNotifier {
   }
 
   _trySetCurrentTabToFirstVisibleEnabled() {
+    // Admin-presence customization: do not force away from the admin pane just
+    // because it is intentionally excluded from the normal visible tab list.
     if (_currentTab == PeerTabIndex.admin.index) {
       return;
     }

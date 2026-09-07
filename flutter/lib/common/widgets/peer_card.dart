@@ -824,6 +824,9 @@ abstract class BasePeerCard extends StatelessWidget {
             case PeerTabIndex.group:
               break;
             case PeerTabIndex.admin:
+              // Admin-presence customization: admin device rows are rendered
+              // by AdminPresencePane, so peer-card deletion is intentionally
+              // not used for this logical tab.
               break;
           }
           if (tab != PeerTabIndex.ab) {

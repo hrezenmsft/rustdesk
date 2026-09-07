@@ -1800,6 +1800,8 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
                 listTile(
                   icon: Icons.admin_panel_settings_outlined,
                   title: 'Admin Presence',
+                  // Admin-presence customization for this Windows client
+                  // version: configure the self-hosted admin API endpoint.
                   onTap: _showAdminPresenceSettings,
                 ),
               if (!hideProxy && !hideServer) divider,
@@ -1868,6 +1870,8 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _showAdminPresenceSettings() async {
+    // Admin-presence customization: persist the API endpoint and admin token
+    // locally so the embedded admin pane can auto-login and auto-refresh.
     final serverController = TextEditingController(
       text: bind.mainGetLocalOption(key: kOptionAdminPresenceServer),
     );

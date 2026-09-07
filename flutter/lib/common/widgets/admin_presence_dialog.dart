@@ -10,9 +10,10 @@ import '../../common.dart';
 import '../../models/platform_model.dart';
 import 'peer_card.dart';
 
-/// Embedded tab-pane listing devices currently known to the self-hosted
-/// admin presence API. Selecting an online device calls RustDesk's normal
-/// connection flow; target password/consent/permissions are never bypassed.
+/// Admin-presence customization for this Windows client version: embedded
+/// tab-pane listing devices currently known to the self-hosted admin presence
+/// API. Selecting an online device calls RustDesk's normal connection flow;
+/// target password/consent/permissions are never bypassed.
 class AdminPresencePane extends StatefulWidget {
   const AdminPresencePane({Key? key}) : super(key: key);
 
@@ -74,6 +75,8 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
     await _model.refreshDevices();
   }
 
+  /// Admin-presence customization: prompt users to configure the saved
+  /// self-hosted admin API endpoint and token before showing device presence.
   Widget _buildConfigurePrompt(BuildContext context, AdminPresenceModel model) {
     return Center(
       child: ConstrainedBox(
@@ -128,6 +131,8 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
     );
   }
 
+  /// Admin-presence customization: Recent Sessions-style list with server
+  /// reachability, online/offline state, stale-device delete, and auto-refresh.
   Widget _buildDeviceList(BuildContext context, AdminPresenceModel model) {
     final onlineCount = model.devices.where((d) => d.online).length;
     return Column(
@@ -143,21 +148,12 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            TextButton.icon(
-              onPressed: model.loading ? null : () => model.refreshDevices(),
-              icon: model.loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh),
-              label: Text(translate('Refresh')),
-            ),
-            TextButton(
-              onPressed: () => model.logout(),
-              child: Text(translate('Logout')),
-            ),
+            if (model.loading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
           ],
         ),
         if (model.error != null)
@@ -185,6 +181,8 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
     );
   }
 
+  /// Admin-presence customization: prefer friendly local peer names over raw
+  /// IDs when the admin API cannot provide a hostname.
   String _displayName(AdminOnlineDevice device) {
     if (device.name.isNotEmpty) {
       return device.name;
@@ -205,6 +203,8 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
     return peer.id;
   }
 
+  /// Admin-presence customization: search existing RustDesk peer caches by
+  /// normalized ID so formatted IDs still resolve to hostnames/aliases.
   Peer? _findKnownPeer(String id) {
     final sources = <List<Peer>>[
       gFFI.recentPeersModel.peers,
@@ -215,15 +215,19 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
     ];
     for (final peers in sources) {
       for (final peer in peers) {
-        if (peer.id == id) {
+        if (_normalizeId(peer.id) == _normalizeId(id)) {
           return peer;
         }
       }
     }
     return null;
   }
+
+  String _normalizeId(String id) => id.replaceAll(' ', '').trim();
 }
 
+/// Admin-presence customization for this Windows client version: one device
+/// row in the embedded administrator online-device pane.
 class _AdminPresenceDeviceCard extends StatelessWidget {
   final AdminOnlineDevice device;
   final String name;

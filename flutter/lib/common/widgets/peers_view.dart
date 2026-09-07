@@ -442,6 +442,8 @@ abstract class BasePeersView extends StatelessWidget {
         peers = gFFI.groupModel.peersModel;
         break;
       case PeerTabIndex.admin:
+        // Admin-presence customization: the admin pane supplies its own list;
+        // use a harmless existing model to satisfy the shared view contract.
         peers = gFFI.recentPeersModel;
         break;
     }

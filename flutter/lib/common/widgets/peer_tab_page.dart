@@ -67,6 +67,8 @@ class _PeerTabPageState extends State<PeerTabPage>
       ),
       ({dynamic hint}) => gFFI.groupModel.pull(force: hint == null),
     ),
+    // Admin-presence customization for this Windows client version: embedded
+    // admin pane entry selected by the dedicated left-side icon.
     _TabEntry(const AdminPresencePane()),
   ];
   RelativeRect? mobileTabContextMenuPos;
@@ -120,6 +122,9 @@ class _PeerTabPageState extends State<PeerTabPage>
                 child: selectionWrap(Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Admin-presence customization: keep the admin device-list
+                    // selector as the first left-side icon before normal tabs.
+                    if (isDesktop) _createAdminPresenceButton(context),
                     Expanded(
                         child: visibleContextMenuListener(
                             _createSwitchBar(context))),
@@ -190,6 +195,8 @@ class _PeerTabPageState extends State<PeerTabPage>
   Widget _createPeersView() {
     final model = Provider.of<PeerTabModel>(context);
     Widget child;
+    // Admin-presence customization: the admin pane is selected by a dedicated
+    // icon, not by the reorderable/visibility-controlled peer-tab strip.
     if (model.currentTab == PeerTabIndex.admin.index) {
       child = entries[PeerTabIndex.admin.index].widget;
     } else if (model.visibleEnabledOrderedIndexs.isEmpty) {
@@ -213,6 +220,8 @@ class _PeerTabPageState extends State<PeerTabPage>
   }
 
   Widget _createAdminPresenceButton(BuildContext context) {
+    // Admin-presence customization: this opens the embedded administrator
+    // online-device pane while preserving normal RustDesk connection behavior.
     final selected = gFFI.peerTabModel.currentTab == PeerTabIndex.admin.index;
     final color = selected
         ? MyTheme.tabbar(context).selectedTextColor
@@ -577,7 +586,6 @@ class _PeerTabPageState extends State<PeerTabPage>
   List<Widget> _landscapeRightActions(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
     return [
-      _createAdminPresenceButton(context),
       const PeerSearchBar().marginOnly(right: 13),
       _createRefresh(
           index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
@@ -646,7 +654,6 @@ class _PeerTabPageState extends State<PeerTabPage>
 
     // Always show search, refresh
     List<Widget> actions = [
-      _createAdminPresenceButton(context),
       const PeerSearchBar(),
       if (model.currentTab == PeerTabIndex.ab.index)
         _createRefresh(

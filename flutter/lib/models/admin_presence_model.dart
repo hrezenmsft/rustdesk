@@ -8,7 +8,8 @@ import '../common.dart';
 import '../utils/http_service.dart' as http;
 import 'platform_model.dart';
 
-/// A single device reported as currently online by the admin presence API.
+/// Admin-presence customization for this Windows client version: a single
+/// device reported as currently online by the self-hosted admin presence API.
 /// Intentionally carries no IP/address data (least-privilege client model).
 class AdminOnlineDevice {
   final String id;
@@ -71,12 +72,13 @@ class AdminOnlineDevice {
       };
 }
 
-/// Client for the custom admin presence API (`/admin/v1/...`).
+/// Admin-presence customization for this Windows client version: client for
+/// the custom admin presence API (`/admin/v1/...`).
 ///
-/// The admin server address (host:port) is persisted locally via
-/// [kOptionAdminPresenceServer] (non-secret). The admin token and the JWT
-/// issued after login are held in memory only for the lifetime of the app
-/// session and are never written to disk.
+/// The admin server address (host:port) and admin token are persisted locally
+/// via [kOptionAdminPresenceServer] and [kOptionAdminPresenceToken] so the
+/// admin view can reconnect automatically. The server-issued JWT is kept only
+/// in memory for the lifetime of the app session.
 class AdminPresenceModel with ChangeNotifier {
   String _server;
   String? _jwt;
@@ -123,9 +125,8 @@ class AdminPresenceModel with ChangeNotifier {
     return 'http://$s';
   }
 
-  /// Logs into the admin API with the given shared admin token.
-  /// The token itself is never persisted; only the resulting short-lived
-  /// JWT is kept in memory.
+  /// Admin-presence customization: logs into the admin API with the saved
+  /// shared admin token and keeps only the resulting short-lived JWT in memory.
   Future<bool> login(String token) async {
     if (_baseUrl().isEmpty) {
       error = translate('Please input a valid admin server address');
@@ -166,8 +167,8 @@ class AdminPresenceModel with ChangeNotifier {
     }
   }
 
-  /// Fetches the current list of online devices. Requires a prior
-  /// successful [login]; on 401 the caller should re-prompt for login.
+  /// Admin-presence customization: fetches the current online-device list.
+  /// Requires a prior successful [login]; on 401 the caller should re-login.
   Future<bool> refreshDevices() async {
     if (_jwt == null) {
       error = translate('Not logged in');
@@ -180,17 +181,20 @@ class AdminPresenceModel with ChangeNotifier {
     try {
       final uri =
           Uri.parse('${_baseUrl()}/admin/v1/devices?status=online');
+      final jwt = _jwt!;
+      final headers = <String, String>{'Authorization': 'Bearer $jwt'};
       final resp = await http
-          .get(uri, headers: {'Authorization': 'Bearer $_jwt'});
+          .get(uri, headers: headers);
       serverOnline = true;
       final body = decode_http_response(resp);
       if (resp.statusCode == 200) {
         final map = jsonDecode(body);
         final list = (map['devices'] as List<dynamic>?) ?? [];
-        final myId = await bind.mainGetMyId();
+        final myId = _normalizeId(await bind.mainGetMyId());
+        devices = devices.where((d) => _normalizeId(d.id) != myId).toList();
         final onlineDevices = list
             .map((e) => AdminOnlineDevice.fromJson(e as Map<String, dynamic>))
-            .where((d) => d.id != myId)
+            .where((d) => _normalizeId(d.id) != myId)
             .toList();
         _mergeOnlineDevices(onlineDevices);
         return true;
@@ -219,7 +223,8 @@ class AdminPresenceModel with ChangeNotifier {
   }
 
   void deleteDevice(String id) {
-    devices = devices.where((d) => d.id != id).toList();
+    final normalized = _normalizeId(id);
+    devices = devices.where((d) => _normalizeId(d.id) != normalized).toList();
     _saveCachedDevices();
     notifyListeners();
   }
@@ -258,6 +263,8 @@ class AdminPresenceModel with ChangeNotifier {
     _saveCachedDevices();
   }
 
+  /// Admin-presence customization: cached devices preserve stale/offline rows
+  /// between refreshes so administrators can see and delete old entries.
   List<AdminOnlineDevice> _loadCachedDevices() {
     try {
       final raw = bind.mainGetLocalOption(key: kOptionAdminPresenceDevices);
@@ -278,6 +285,10 @@ class AdminPresenceModel with ChangeNotifier {
       value: jsonEncode(devices.map((d) => d.toCacheJson()).toList()),
     );
   }
+
+  /// Admin-presence customization: normalize RustDesk IDs before comparing
+  /// because the UI may display grouped IDs such as `1 262 916 439`.
+  String _normalizeId(String id) => id.replaceAll(' ', '').trim();
 
   String? _extractError(String body) {
     try {

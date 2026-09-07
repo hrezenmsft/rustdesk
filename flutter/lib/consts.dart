@@ -96,6 +96,8 @@ const String kOptionWhitelist = "whitelist";
 const String kOptionIdWhitelist = "id-whitelist";
 const String kOptionEnableAbr = "enable-abr";
 const String kOptionEnableRecordSession = "enable-record-session";
+// Admin-presence customization for this Windows client version: saved endpoint,
+// saved admin token, and stale-device cache for the embedded admin view.
 const String kOptionAdminPresenceServer = "admin-presence-server";
 const String kOptionAdminPresenceToken = "admin-presence-token";
 const String kOptionAdminPresenceDevices = "admin-presence-devices";
