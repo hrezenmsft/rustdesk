@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/widgets/address_book.dart';
+import 'package:flutter_hbb/common/widgets/admin_presence_dialog.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/common/widgets/my_group.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
@@ -118,6 +119,7 @@ class _PeerTabPageState extends State<PeerTabPage>
                 child: selectionWrap(Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (isDesktop) _createAdminPresenceButton(context),
                     Expanded(
                         child: visibleContextMenuListener(
                             _createSwitchBar(context))),
@@ -206,6 +208,20 @@ class _PeerTabPageState extends State<PeerTabPage>
     return Expanded(
         child: child.marginSymmetric(
             vertical: (isDesktop || isWebDesktop) ? 12.0 : 6.0));
+  }
+
+  Widget _createAdminPresenceButton(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    return _hoverAction(
+      context: context,
+      toolTip: translate('Admin - Online Devices'),
+      onTap: () => showAdminPresenceDialog(context),
+      child: Icon(
+        Icons.admin_panel_settings_outlined,
+        size: 18,
+        color: textColor,
+      ),
+    );
   }
 
   Widget _createRefresh(

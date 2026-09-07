@@ -32,6 +32,12 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
   - `flutter build windows --release` — passes, produces `flutter/build/windows/x64/runner/Release/rustdesk.exe`.
   - This release build, copied to `rd-endpoint-01` and pointed at `rd-admin-server`'s rendezvous service via `RustDesk2.toml`, successfully registered its ID with `hbbs` (`update_pk` logged) — confirms end-to-end reachability of the lab rendezvous path before any admin-presence code is added. Full interactive connect (target consent/password prompt) was not exercised non-interactively by design, since bypassing that prompt is explicitly out of scope; it will be exercised as part of end-to-end validation once the admin device-list view exists.
 
+  ### Implemented Admin Presence Client
+
+  - Added a desktop-only administrator icon immediately beside the existing Recent Sessions tab bar.
+  - Added a login/device-list dialog that persists only the non-secret server address (`host:port`) in the local Flutter options store. The shared admin token and issued JWT remain in memory only.
+  - The dialog calls `POST /admin/v1/auth/login`, then `GET /admin/v1/devices?status=online` using the bearer JWT. Selecting a device calls the existing `connect(context, id)` flow, preserving target password, consent, and permission checks.
+
 ## Change Discipline
 
 Update this document when the client/server API contract, UI behavior, authentication model, or test workflow changes. Add every user-visible or compatibility-relevant change to `docs/ADMIN_PRESENCE_CHANGELOG.md` in the same change set.
