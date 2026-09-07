@@ -28,8 +28,8 @@ This repository is a **private fork of the official [rustdesk/rustdesk](https://
   - An **X** action to delete stale/offline rows you no longer want tracked.
   - Devices are sorted **online-first, then alphabetically by name**, and the list/tile/grid visualization switch works the same as on every other peer tab.
 - Selecting an **online** device runs RustDesk's completely normal, unmodified connection flow for that device ID — target-side password, consent, and permission prompts are never bypassed or skipped.
-- A new **Settings > Network > Admin Presence** section to configure the admin API's `host:port` and admin token (stored locally; only the resulting short-lived session token is kept in memory).
-- This client never talks to a database or log file directly — it only calls the versioned, authenticated `GET /admin/v1/devices?status=online` HTTP API exposed by the paired server fork.
+- A new **Settings > Network > Admin Presence** section to configure the admin API's `host:port` and, as of **v2.0.0**, a per-device **enrolled ed25519 key** (paste the private key printed by `rustdesk-utils genadminkey` on the server, then "Enroll key") as the primary way to authenticate — the key is stored locally (DPAPI-protected) and never leaves the device except as a signature; only the resulting short-lived session token is kept in memory. The old shared admin token is still supported as a deprecated, collapsed "legacy" option for v1.x migration.
+- This client never talks to a database or log file directly — it only calls the versioned, authenticated `POST /admin/v1/auth/challenge` + `POST /admin/v1/auth/verify` (or, legacy, `POST /admin/v1/auth/login`) and `GET /admin/v1/devices?status=online` HTTP APIs exposed by the paired server fork.
 
 ### Documentation
 

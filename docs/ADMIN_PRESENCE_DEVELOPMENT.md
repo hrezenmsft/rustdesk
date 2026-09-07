@@ -42,6 +42,16 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
   - Deployment validation copied the release build to a private endpoint VM and confirmed online/offline/online behavior across the rendezvous registration timeout.
   - If the admin list works but connection fails with "target device is offline or does not exist", check the admin client's normal RustDesk server settings. This usually means the admin API setting points to the self-hosted server but the normal RustDesk connection flow still points to a different rendezvous/relay server. Align the normal RustDesk server settings and server key with the same self-hosted deployment.
 
+  ### v2.0.0: enroll a per-client ed25519 key instead of the shared admin token
+
+  **The plaintext admin token above is now the *legacy/migration* path.** New clients should enroll a per-client ed25519 key instead — every deployment step further down in this document that still mentions "the plaintext admin token" is documenting that legacy path; it still works exactly as written, but should be treated as a fallback used only if no key is enrolled. See `docs/ADMIN_PRESENCE_AI_HANDOFF.md` §6 for the full contract; the summary:
+
+  - On the server, run `rustdesk-utils genadminkey "<a label for this client>"` once per admin client (e.g. its hostname). It prints a 64-byte private key **once** — it is never stored server-side and cannot be recovered if lost.
+  - In this client's Settings > Network > Admin Presence, paste that value into the new "Admin key" section and click "Enroll key". The dialog then shows the enrolled key's fingerprint, which matches the server's `rustdesk-utils listadminkeys` output byte-for-byte so it can be visually cross-checked. "Remove key from this device" un-enrolls locally only — revoke it server-side separately with `rustdesk-utils revokeadminkey <fingerprint>` if the key itself needs to stop working.
+  - Internally this replaced `POST /admin/v1/auth/login` with a `POST /admin/v1/auth/challenge` + `POST /admin/v1/auth/verify` handshake (`admin_presence_model.dart::loginWithKeyPair()`), signing the server-issued nonce with the enrolled private key (`admin_presence_keypair.dart`). Both auth paths issue the same JWT bearer token, so nothing downstream (`GET /admin/v1/devices` and the rest of the pane) needed any changes.
+  - The private key seed is encrypted at rest with Windows DPAPI (current-user scope) via the `win32` package before being written to the local options store; it can only be decrypted again on the same Windows user profile that enrolled it.
+  - This is a pure-Dart change: the admin-presence feature already talked to the server via `package:http` rather than the Rust FFI bridge, so no Rust source file or `flutter_rust_bridge` binding needed to change. New unit tests (`flutter test test/admin_presence_keypair_test.dart`, 8/8 passing) cover the fingerprint algorithm and the cross-library (`sodiumoxide` ↔ `cryptography` package) key-format assumptions directly.
+
 ## How to Set Up the Development Environment
 
 1. Install Git, GitHub CLI (optional), and `rustup`.

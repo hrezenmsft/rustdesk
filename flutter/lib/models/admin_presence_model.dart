@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../consts.dart';
 import '../common.dart';
 import '../utils/http_service.dart' as http;
+import 'admin_presence_keypair.dart';
 import 'platform_model.dart';
 
 /// Admin-presence customization for this Windows client version: a single
@@ -106,9 +107,23 @@ class AdminPresenceModel with ChangeNotifier {
 
   bool get isLoggedIn => _jwt != null;
   String get server => _server;
+
+  /// Admin-presence customization (v2.0.0): true once the admin server
+  /// address is set and *either* an enrolled ed25519 keypair (preferred) or
+  /// a legacy shared admin token is available to authenticate with.
   bool get hasSavedConfig =>
       bind.mainGetLocalOption(key: kOptionAdminPresenceServer).isNotEmpty &&
-      bind.mainGetLocalOption(key: kOptionAdminPresenceToken).isNotEmpty;
+      (bind
+              .mainGetLocalOption(key: kOptionAdminPresencePublicKey)
+              .isNotEmpty ||
+          bind.mainGetLocalOption(key: kOptionAdminPresenceToken).isNotEmpty);
+
+  /// Admin-presence customization (v2.0.0): true once a per-client ed25519
+  /// keypair has been enrolled on this machine (see
+  /// `admin_presence_keypair.dart`). When true, [autoLogin] always prefers
+  /// key-based auth over the deprecated shared-token login.
+  bool get hasEnrolledKey =>
+      bind.mainGetLocalOption(key: kOptionAdminPresencePublicKey).isNotEmpty;
 
   AdminPresenceModel()
       : _server = bind.mainGetLocalOption(key: kOptionAdminPresenceServer) {
@@ -121,18 +136,119 @@ class AdminPresenceModel with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Admin-presence customization (v2.0.0): imports a private key produced
+  /// by `rustdesk-utils genadminkey` and returns its fingerprint on success,
+  /// or throws with a user-facing message on failure. Used by the settings
+  /// dialog's enrollment flow.
+  static Future<String> enrollKey(String privateKeyB64) async {
+    final keyPair = await importAdminPresenceKeyPair(privateKeyB64.trim());
+    return keyPair.fingerprint();
+  }
+
+  /// Admin-presence customization (v2.0.0): fingerprint of the currently
+  /// enrolled key, or `null` if none is enrolled / it fails to load (e.g.
+  /// DPAPI data from a different machine/user).
+  static Future<String?> enrolledKeyFingerprint() async {
+    final keyPair = await loadAdminPresenceKeyPair();
+    return keyPair?.fingerprint();
+  }
+
+  /// Admin-presence customization (v2.0.0): removes the enrolled keypair
+  /// from this machine only (does not revoke it server-side).
+  static void unenrollKey() => clearAdminPresenceKeyPair();
+
   static String savedToken() =>
       bind.mainGetLocalOption(key: kOptionAdminPresenceToken);
 
-  Future<bool> loginWithSavedToken() async {
+  /// Admin-presence customization (v2.0.0): logs in using whichever
+  /// credential is available, preferring the enrolled ed25519 keypair over
+  /// the deprecated shared admin token.
+  Future<bool> autoLogin() async {
     _server = bind.mainGetLocalOption(key: kOptionAdminPresenceServer);
+    if (_server.isEmpty) {
+      error = translate('Configure admin presence in Settings > Network');
+      notifyListeners();
+      return false;
+    }
+    if (hasEnrolledKey) {
+      return loginWithKeyPair();
+    }
     final token = savedToken();
-    if (_server.isEmpty || token.isEmpty) {
+    if (token.isEmpty) {
       error = translate('Configure admin presence in Settings > Network');
       notifyListeners();
       return false;
     }
     return login(token);
+  }
+
+  /// Admin-presence customization (v2.0.0): primary login path — performs
+  /// the ed25519 challenge/verify handshake using the keypair enrolled via
+  /// `rustdesk-utils genadminkey` (see `admin_presence_keypair.dart`).
+  Future<bool> loginWithKeyPair() async {
+    if (_baseUrl().isEmpty) {
+      error = translate('Please input a valid admin server address');
+      notifyListeners();
+      return false;
+    }
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final keyPair = await loadAdminPresenceKeyPair();
+      if (keyPair == null) {
+        error = translate(
+            'No admin key enrolled on this device. Import a key generated with rustdesk-utils genadminkey.');
+        return false;
+      }
+      final challengeUri = Uri.parse('${_baseUrl()}/admin/v1/auth/challenge');
+      final challengeResp = await http.post(challengeUri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'public_key': keyPair.publicKeyB64}));
+      serverOnline = true;
+      final challengeBody = decode_http_response(challengeResp);
+      if (challengeResp.statusCode != 200) {
+        error = _extractError(challengeBody) ??
+            '${translate('Login failed with status')} ${challengeResp.statusCode}';
+        return false;
+      }
+      final nonce = jsonDecode(challengeBody)['nonce']?.toString();
+      if (nonce == null || nonce.isEmpty) {
+        error = translate('Invalid response from admin server');
+        return false;
+      }
+      final signature = await keyPair.signB64(nonce);
+      final verifyUri = Uri.parse('${_baseUrl()}/admin/v1/auth/verify');
+      final verifyResp = await http.post(verifyUri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'public_key': keyPair.publicKeyB64,
+            'nonce': nonce,
+            'signature': signature,
+          }));
+      final verifyBody = decode_http_response(verifyResp);
+      if (verifyResp.statusCode == 200) {
+        final map = jsonDecode(verifyBody);
+        final jwt = map['access_token']?.toString();
+        if (jwt == null || jwt.isEmpty) {
+          error = translate('Invalid response from admin server');
+          return false;
+        }
+        _jwt = jwt;
+        return true;
+      } else {
+        error = _extractError(verifyBody) ??
+            '${translate('Login failed with status')} ${verifyResp.statusCode}';
+        return false;
+      }
+    } catch (e) {
+      serverOnline = false;
+      error = '${translate('Failed to reach admin server')}: $e';
+      return false;
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
   }
 
   String _baseUrl() {
@@ -143,7 +259,9 @@ class AdminPresenceModel with ChangeNotifier {
   }
 
   /// Admin-presence customization: logs into the admin API with the saved
-  /// shared admin token and keeps only the resulting short-lived JWT in memory.
+  /// shared admin token and keeps only the resulting short-lived JWT in
+  /// memory. Deprecated in v2.0.0 in favor of [loginWithKeyPair]; kept for
+  /// servers that have not migrated off `ADMIN_API_TOKEN_HASH` yet.
   Future<bool> login(String token) async {
     if (_baseUrl().isEmpty) {
       error = translate('Please input a valid admin server address');

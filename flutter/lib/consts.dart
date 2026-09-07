@@ -101,6 +101,12 @@ const String kOptionEnableRecordSession = "enable-record-session";
 const String kOptionAdminPresenceServer = "admin-presence-server";
 const String kOptionAdminPresenceToken = "admin-presence-token";
 const String kOptionAdminPresenceDevices = "admin-presence-devices";
+// Admin-presence customization (v2.0.0): DPAPI-encrypted (base64) ed25519
+// private key and plaintext base64 public key for per-client key-based admin
+// auth, replacing the single shared admin token above (kept for v1.x
+// migration/back-compat only). See lib/models/admin_presence_keypair.dart.
+const String kOptionAdminPresencePrivateKeyEnc = "admin-presence-private-key-enc";
+const String kOptionAdminPresencePublicKey = "admin-presence-public-key";
 const String kOptionDirectServer = "direct-server";
 const String kOptionDirectAccessPort = "direct-access-port";
 const String kOptionAllowAutoDisconnect = "allow-auto-disconnect";

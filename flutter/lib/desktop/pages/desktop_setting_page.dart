@@ -13,6 +13,7 @@ import 'package:flutter_hbb/desktop/pages/desktop_home_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
 import 'package:flutter_hbb/mobile/widgets/dialog.dart';
+import 'package:flutter_hbb/models/admin_presence_model.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/printer_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
@@ -1870,69 +1871,144 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _showAdminPresenceSettings() async {
-    // Admin-presence customization: persist the API endpoint and admin token
-    // locally so the embedded admin pane can auto-login and auto-refresh.
+    // Admin-presence customization: persist the API endpoint locally so the
+    // embedded admin pane can auto-login (preferring an enrolled ed25519
+    // key, see `admin_presence_model.dart::autoLogin`) and auto-refresh.
     final serverController = TextEditingController(
       text: bind.mainGetLocalOption(key: kOptionAdminPresenceServer),
     );
     final tokenController = TextEditingController(
       text: bind.mainGetLocalOption(key: kOptionAdminPresenceToken),
     );
+    final privateKeyController = TextEditingController();
+    String? enrolledFingerprint = await AdminPresenceModel.enrolledKeyFingerprint();
+    String? enrollError;
+    if (!mounted) return;
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(translate('Admin Presence')),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: serverController,
-                decoration: InputDecoration(
-                  labelText: translate('Admin server address (host:port)'),
-                  hintText: '172.27.17.85:21114',
-                ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(translate('Admin Presence')),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: serverController,
+                    decoration: InputDecoration(
+                      labelText: translate('Admin server address (host:port)'),
+                      hintText: '172.27.17.85:21114',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(translate('Admin key'),
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  if (enrolledFingerprint != null) ...[
+                    Text(
+                        '${translate('Enrolled')}: $enrolledFingerprint',
+                        style: TextStyle(fontFamily: 'monospace')),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () {
+                        AdminPresenceModel.unenrollKey();
+                        setDialogState(() {
+                          enrolledFingerprint = null;
+                        });
+                      },
+                      child: Text(translate('Remove key from this device')),
+                    ),
+                  ] else ...[
+                    Text(
+                      translate(
+                          'Paste the private key printed once by `rustdesk-utils genadminkey` on the admin server.'),
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: privateKeyController,
+                      obscureText: true,
+                      maxLines: 1,
+                      decoration: InputDecoration(
+                        labelText: translate('Private key'),
+                        errorText: enrollError,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () async {
+                        if (privateKeyController.text.trim().isEmpty) return;
+                        try {
+                          final fp = await AdminPresenceModel.enrollKey(
+                              privateKeyController.text);
+                          privateKeyController.clear();
+                          setDialogState(() {
+                            enrolledFingerprint = fp;
+                            enrollError = null;
+                          });
+                        } catch (e) {
+                          setDialogState(() {
+                            enrollError = translate('Invalid private key');
+                          });
+                        }
+                      },
+                      child: Text(translate('Enroll key')),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: Text(translate('Legacy shared token (deprecated)'),
+                        style: TextStyle(fontSize: 13)),
+                    children: [
+                      TextField(
+                        controller: tokenController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: translate('Admin token'),
+                          helperText: translate(
+                              'Only used if no admin key is enrolled above. Migrate to a key when possible.'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: tokenController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: translate('Admin token'),
-                ),
-              ),
-            ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(translate('Cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await bind.mainSetLocalOption(
+                  key: kOptionAdminPresenceServer,
+                  value: serverController.text.trim(),
+                );
+                await bind.mainSetLocalOption(
+                  key: kOptionAdminPresenceToken,
+                  value: tokenController.text,
+                );
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  showToast(translate('Successful'));
+                  setState(() {});
+                }
+              },
+              child: Text(translate('OK')),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(translate('Cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await bind.mainSetLocalOption(
-                key: kOptionAdminPresenceServer,
-                value: serverController.text.trim(),
-              );
-              await bind.mainSetLocalOption(
-                key: kOptionAdminPresenceToken,
-                value: tokenController.text,
-              );
-              if (mounted) {
-                Navigator.of(context).pop();
-                showToast(translate('Successful'));
-                setState(() {});
-              }
-            },
-            child: Text(translate('OK')),
-          ),
-        ],
       ),
     );
     serverController.dispose();
     tokenController.dispose();
+    privateKeyController.dispose();
   }
 }
 

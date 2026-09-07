@@ -73,7 +73,7 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
 
   Future<void> _refreshFromConfig() async {
     if (!mounted) return;
-    if (!await _model.loginWithSavedToken()) return;
+    if (!await _model.autoLogin()) return;
     await _model.refreshDevices();
   }
 

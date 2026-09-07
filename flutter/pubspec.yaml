@@ -46,6 +46,11 @@ dependencies:
   http: ^1.1.0
   qr_code_scanner: ^1.0.0
   zxing2: ^0.2.0
+  # Admin-presence customization (v2.0.0): pure-Dart Ed25519 keypair
+  # generation/signing for per-client key-based admin auth (see
+  # lib/models/admin_presence_keypair.dart). No native/FFI dependency beyond
+  # what `win32` (already a dependency, below) already provides for DPAPI.
+  cryptography: ^2.7.0
   image_picker: ^1.1.2
   image: ^4.0.17
   back_button_interceptor: ^6.0.1
@@ -121,6 +126,7 @@ dev_dependencies:
   freezed: ^2.4.2
   flutter_lints: ^2.0.2
   ffigen: ^8.0.2
+  crypto: ^3.0.3
 
 dependency_overrides:
   intl: ^0.19.0
