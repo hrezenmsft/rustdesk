@@ -18,6 +18,10 @@ class AdminOnlineDevice {
   final bool online;
   final int lastSeenAtMs;
   final int offlineSinceMs;
+  // Admin-presence customization: user-assigned display name override. Starts
+  // unset (falls back to the reported hostname in [name]) and, once set,
+  // persists across refreshes until the administrator deletes the device row.
+  final String? customName;
 
   AdminOnlineDevice({
     required this.id,
@@ -26,7 +30,13 @@ class AdminOnlineDevice {
     required this.online,
     required this.lastSeenAtMs,
     required this.offlineSinceMs,
+    this.customName,
   });
+
+  /// Admin-presence customization: name shown in the UI — the user-chosen
+  /// override if set, otherwise the hostname reported by the admin API.
+  String get displayName =>
+      (customName != null && customName!.isNotEmpty) ? customName! : name;
 
   factory AdminOnlineDevice.fromJson(Map<String, dynamic> json) {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -42,6 +52,7 @@ class AdminOnlineDevice {
       offlineSinceMs: json['offline_since_ms'] is int
           ? json['offline_since_ms']
           : 0,
+      customName: json['custom_name']?.toString(),
     );
   }
 
@@ -51,6 +62,8 @@ class AdminOnlineDevice {
     bool? online,
     int? lastSeenAtMs,
     int? offlineSinceMs,
+    String? customName,
+    bool clearCustomName = false,
   }) {
     return AdminOnlineDevice(
       id: id,
@@ -59,6 +72,8 @@ class AdminOnlineDevice {
       online: online ?? this.online,
       lastSeenAtMs: lastSeenAtMs ?? this.lastSeenAtMs,
       offlineSinceMs: offlineSinceMs ?? this.offlineSinceMs,
+      customName:
+          clearCustomName ? null : (customName ?? this.customName),
     );
   }
 
@@ -69,6 +84,8 @@ class AdminOnlineDevice {
         'online': online,
         'last_seen_at_ms': lastSeenAtMs,
         'offline_since_ms': offlineSinceMs,
+        if (customName != null && customName!.isNotEmpty)
+          'custom_name': customName,
       };
 }
 
@@ -229,6 +246,22 @@ class AdminPresenceModel with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Admin-presence customization: sets (or clears, when [name] is empty) the
+  /// user-chosen display-name override for a device. The override persists
+  /// across refreshes/reconnects and survives the underlying hostname
+  /// changing, until the administrator removes the device row entirely.
+  void renameDevice(String id, String name) {
+    final normalized = _normalizeId(id);
+    devices = devices
+        .map((d) => _normalizeId(d.id) == normalized
+            ? d.copyWith(
+                customName: name.trim(), clearCustomName: name.trim().isEmpty)
+            : d)
+        .toList();
+    _saveCachedDevices();
+    notifyListeners();
+  }
+
   void _mergeOnlineDevices(List<AdminOnlineDevice> onlineDevices) {
     final now = DateTime.now().millisecondsSinceEpoch;
     final merged = <String, AdminOnlineDevice>{
@@ -243,6 +276,9 @@ class AdminPresenceModel with ChangeNotifier {
         online: true,
         lastSeenAtMs: now - (online.lastSeenSecs * 1000),
         offlineSinceMs: 0,
+        // Preserve the administrator's chosen display-name override across
+        // refreshes; it's only cleared when the device row is deleted.
+        customName: existing?.customName,
       );
     }
     for (final entry in merged.entries.toList()) {
@@ -254,13 +290,17 @@ class AdminPresenceModel with ChangeNotifier {
       );
     }
     devices = merged.values.toList()
-      ..sort((a, b) {
-        if (a.online != b.online) return a.online ? -1 : 1;
-        final an = a.name.isEmpty ? a.id : a.name;
-        final bn = b.name.isEmpty ? b.id : b.name;
-        return an.toLowerCase().compareTo(bn.toLowerCase());
-      });
+      ..sort(_compareDevices);
     _saveCachedDevices();
+  }
+
+  /// Admin-presence customization: sort online devices first, then
+  /// alphabetically by display name (falls back to ID when no name is known).
+  int _compareDevices(AdminOnlineDevice a, AdminOnlineDevice b) {
+    if (a.online != b.online) return a.online ? -1 : 1;
+    final an = a.displayName.isEmpty ? a.id : a.displayName;
+    final bn = b.displayName.isEmpty ? b.id : b.displayName;
+    return an.toLowerCase().compareTo(bn.toLowerCase());
   }
 
   /// Admin-presence customization: cached devices preserve stale/offline rows
@@ -270,9 +310,11 @@ class AdminPresenceModel with ChangeNotifier {
       final raw = bind.mainGetLocalOption(key: kOptionAdminPresenceDevices);
       if (raw.isEmpty) return [];
       final list = jsonDecode(raw) as List<dynamic>;
-      return list
+      final loaded = list
           .map((e) => AdminOnlineDevice.fromJson(e as Map<String, dynamic>))
           .toList();
+      loaded.sort(_compareDevices);
+      return loaded;
     } catch (e) {
       debugPrint('Failed to load cached admin presence devices: $e');
       return [];

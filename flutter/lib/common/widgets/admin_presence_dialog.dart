@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dynamic_layouts/dynamic_layouts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/models/admin_presence_model.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
+import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../../common.dart';
@@ -164,26 +166,49 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
         Expanded(
           child: model.devices.isEmpty
               ? Center(child: Text(translate('No devices online')))
-              : ListView.builder(
-                  itemCount: model.devices.length,
-                  itemBuilder: (context, index) {
-                    final d = model.devices[index];
-                    return _AdminPresenceDeviceCard(
-                      device: d,
-                      name: _displayName(d),
-                      onConnect: d.online ? () => connect(context, d.id) : null,
-                      onDelete: d.online ? null : () => model.deleteDevice(d.id),
-                    );
-                  },
-                ),
+              // Admin-presence customization: honor the same list/tile/grid
+              // visualization switch used by Recent Sessions and other tabs.
+              : Obx(() => peerCardUiType.value == PeerUiType.list
+                  ? ListView.builder(
+                      itemCount: model.devices.length,
+                      itemBuilder: (context, index) =>
+                          _buildDeviceCard(context, model, index),
+                    )
+                  : DynamicGridView.builder(
+                      gridDelegate: SliverGridDelegateWithWrapping(
+                          mainAxisSpacing: 8, crossAxisSpacing: 8),
+                      itemCount: model.devices.length,
+                      itemBuilder: (context, index) => SizedBox(
+                        width: 240,
+                        height:
+                            peerCardUiType.value == PeerUiType.grid ? 150 : 76,
+                        child: _buildDeviceCard(context, model, index),
+                      ),
+                    )),
         ),
       ],
     );
   }
 
-  /// Admin-presence customization: prefer friendly local peer names over raw
-  /// IDs when the admin API cannot provide a hostname.
+  Widget _buildDeviceCard(
+      BuildContext context, AdminPresenceModel model, int index) {
+    final d = model.devices[index];
+    return _AdminPresenceDeviceCard(
+      device: d,
+      name: _displayName(d),
+      onConnect: d.online ? () => connect(context, d.id) : null,
+      onDelete: d.online ? null : () => model.deleteDevice(d.id),
+      onRename: (newName) => model.renameDevice(d.id, newName),
+    );
+  }
+
+  /// Admin-presence customization: the user-chosen override always wins; the
+  /// initial value defaults to the hostname reported by the admin API (or, if
+  /// that isn't available yet, a friendly name from a locally-known peer).
   String _displayName(AdminOnlineDevice device) {
+    if (device.customName != null && device.customName!.isNotEmpty) {
+      return device.customName!;
+    }
     if (device.name.isNotEmpty) {
       return device.name;
     }
@@ -233,13 +258,48 @@ class _AdminPresenceDeviceCard extends StatelessWidget {
   final String name;
   final VoidCallback? onConnect;
   final VoidCallback? onDelete;
+  final void Function(String newName)? onRename;
 
   const _AdminPresenceDeviceCard({
     required this.device,
     required this.name,
     required this.onConnect,
     required this.onDelete,
+    this.onRename,
   });
+
+  /// Admin-presence customization: lets the administrator override the
+  /// displayed device name. The override is stored locally on this client
+  /// only (never sent to the server) and persists until the row is deleted
+  /// or renamed again.
+  Future<void> _showRenameDialog(BuildContext context) async {
+    final controller = TextEditingController(text: name);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(translate('Rename')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(hintText: translate('Please input')),
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(translate('Cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: Text(translate('OK')),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      onRename?.call(result.trim());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +342,14 @@ class _AdminPresenceDeviceCard extends StatelessWidget {
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                           ),
+                          if (onRename != null)
+                            InkWell(
+                              onTap: () => _showRenameDialog(context),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(Icons.edit, size: 14, color: Colors.grey),
+                              ),
+                            ),
                         ],
                       ),
                       Text(

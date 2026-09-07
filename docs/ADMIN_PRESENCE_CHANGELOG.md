@@ -8,6 +8,20 @@ Entries are grouped by date, newest first. Each dated section corresponds to one
 
 ### Added
 
+- Added inline rename ("edit"/pencil icon) on each device row in the admin online-devices pane. The custom display name is stored **locally on this client only** (never sent to the server), overrides the reported hostname, and persists across refreshes/reconnects until the administrator renames it again or deletes the device row.
+- Added fork-specific sections to the top-level `README.md` describing this fork's admin-presence feature, linking to the paired server fork and the unmodified upstream `rustdesk/rustdesk` project, and giving a quick-start clone/build snippet.
+
+### Changed
+
+- Fixed the admin online-devices pane to honor the same list/tile/grid visualization switch used by Recent Sessions and every other peer tab (previously the pane always rendered a fixed list regardless of the selected view type).
+- Device list sort now explicitly sorts online devices first, then alphabetically by display name (custom name if set, otherwise hostname, otherwise ID), applied both on initial cached-list load and after every refresh.
+- Diagnosed and fixed a corrupted `desktop_multi_window_plugin.dll` in a stale local CMake build-tree cache on the development laptop (Windows reported `STATUS_INVALID_IMAGE_HASH` / error `0xc0e90002`) by clearing the plugin's CMake build directory and forcing `flutter build windows --release` to regenerate it; this was a local build-cache corruption issue, not a source-code defect (the same commit built and ran correctly on the endpoint test VM).
+- Repository renamed on GitHub from `rustdesk` to `rustdeskadmin-client` (origin remote updated to match; `upstream` remote unchanged, still points read-only at `rustdesk/rustdesk`).
+
+## 2026-09-07 01:23 (`e990e01d9` — Polish admin-presence UI, sanitize docs, add AI handoff and build/deploy guides)
+
+### Added
+
 - Added a public-safe AI handoff document (`docs/ADMIN_PRESENCE_AI_HANDOFF.md`) with generated/example values for future agents with no prior context on this fork.
 - Added consolidated "How to Build", "How to Set Up the Development Environment", and "How to Deploy" sections to `docs/ADMIN_PRESENCE_DEVELOPMENT.md` and the AI handoff document.
 

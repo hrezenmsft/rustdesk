@@ -37,6 +37,8 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
   - The pane calls `POST /admin/v1/auth/login`, then `GET /admin/v1/devices?status=online` using the bearer JWT. Selecting a device calls the existing `connect(context, id)` flow, preserving target password, consent, and permission checks.
   - The left-side admin action is the first icon before the normal peer tabs and opens the embedded pane without adding a draggable tab item. The pane auto-refreshes every 5 seconds, shows whether the admin API server is reachable, filters out the local admin client's own RustDesk ID (including formatted IDs with spaces), and keeps previously seen devices as greyed-out offline/stale entries with an offline duration and an `X` delete action.
   - The device list displays a friendly device name above the RustDesk ID when the API or local peer caches provide one; otherwise it falls back to the ID.
+  - Administrators can override the displayed name per device via an inline rename (pencil) action; the override is stored **locally on this client only**, is never sent to the server, and persists across refreshes/reconnects until it is changed again or the device row is deleted.
+  - The list/tile/grid visualization switch shared with every other peer tab (Recent Sessions, Favorites, etc.) also applies to the admin pane; devices are sorted online-first, then alphabetically by display name.
   - Deployment validation copied the release build to a private endpoint VM and confirmed online/offline/online behavior across the rendezvous registration timeout.
   - If the admin list works but connection fails with "target device is offline or does not exist", check the admin client's normal RustDesk server settings. This usually means the admin API setting points to the self-hosted server but the normal RustDesk connection flow still points to a different rendezvous/relay server. Align the normal RustDesk server settings and server key with the same self-hosted deployment.
 
@@ -52,8 +54,8 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
 8. Install `flutter_rust_bridge_codegen` **v1.80.1** exactly (`cargo install flutter_rust_bridge_codegen --version 1.80.1 --features "uuid" --locked`) — this must match the `flutter_rust_bridge = "=1.80"` pin in `Cargo.toml`.
 9. Clone your fork and add the upstream remote read-only:
    ```powershell
-   git clone https://github.com/<your-fork>/rustdesk.git
-   cd rustdesk
+   git clone https://github.com/<your-fork>/rustdeskadmin-client.git
+   cd rustdeskadmin-client
    git remote add upstream https://github.com/rustdesk/rustdesk.git
    git remote set-url --push upstream DISABLED
    ```
@@ -76,10 +78,37 @@ The client consumes a versioned authenticated endpoint: `GET /admin/v1/devices?s
   Output: `flutter/build/windows/x64/runner/Release/rustdesk.exe` and its supporting DLLs.
 - Static analysis: `flutter analyze` from the `flutter/` directory.
 - If you clean `target/` or `flutter/build/` to reclaim disk space, you must rebuild the Rust release library **before** `flutter build windows --release` will succeed again — a stale/missing `librustdesk.dll` is the most common cause of a CMake `INSTALL.vcxproj`/`cmake_install.cmake` failure after a cleanup.
+- If a plugin DLL in `flutter/build/windows/x64/runner/Release/` fails to load with Windows error `0xc0e90002` (`STATUS_INVALID_IMAGE_HASH`, "não foi projetada para ser executado no Windows ou contém um erro" on pt-BR systems) even though the same commit runs fine elsewhere, the local CMake build-tree cache for that plugin is corrupted (commonly caused by a build running while the disk was nearly full). Delete `flutter/build/windows/x64/plugins/<plugin_name>/` and the corresponding `.dll` in `Release/`, then rerun `flutter build windows --release` to regenerate it; this is a local build-cache issue, not a source defect.
+
+## How to Package a Windows Installer
+
+This fork uses RustDesk's existing self-extracting "portable" installer packer (`libs/portable`); there is no MSI/Inno Setup step. It bundles the entire `Release/` output (including a `dylib_virtual_display.dll` built separately) into one `.exe`.
+
+1. Build the Rust release library and the Flutter Windows app as in **How to Build** above.
+2. Build the virtual-display helper DLL and copy it into the Release folder (the Flutter build does not produce this file):
+   ```powershell
+   cd libs\virtual_display\dylib
+   cargo build --locked --release
+   cd ..\..\..
+   Copy-Item target\release\dylib_virtual_display.dll flutter\build\windows\x64\runner\Release\
+   ```
+3. Install the one Python dependency the packer needs (`brotli`), then generate and build the installer:
+   ```powershell
+   pip install brotli
+   cd libs\portable
+   python .\generate.py -f ..\..\flutter\build\windows\x64\runner\Release\ -o . -e ..\..\flutter\build\windows\x64\runner\Release\rustdesk.exe
+   cd ..\..
+   ```
+   This compresses the whole Release folder into `libs/portable/data.bin`, then cargo-builds `target/release/rustdesk-portable-packer.exe`, a single self-extracting installer with that data embedded.
+4. Rename the output to match the versioned convention (`rustdesk-utils`'s version comes from `Cargo.toml`):
+   ```powershell
+   Copy-Item target\release\rustdesk-portable-packer.exe ".\rustdesk-<version>-install.exe"
+   ```
+5. **Validate before shipping**: run the installer once on a disposable/test machine (or VM snapshot) and confirm it shows the "RustDesk - Install" UI and, if you proceed with an install, registers a `RustDesk` Windows service and an uninstall entry (`RustDesk.exe --uninstall` removes both cleanly). Running the installer to completion replaces/stops any other `rustdesk.exe` process on that machine — do not test this on a machine with a dev build you need to keep running, or expect to relaunch your dev build afterward.
 
 ## How to Deploy
 
-- The Windows admin client and any managed Windows endpoints are deployed the same way: copy the contents of `flutter/build/windows/x64/runner/Release/` (the `.exe` plus all sibling DLLs) to the target machine — there is no separate installer in this fork.
+- The Windows admin client and any managed Windows endpoints are deployed the same way: copy the contents of `flutter/build/windows/x64/runner/Release/` (the `.exe` plus all sibling DLLs) to the target machine — there is no separate installer required for lab/dev deployments (see the previous section for producing a distributable installer instead).
 - Before overwriting a running deployment, stop the existing `rustdesk.exe` process on the target machine (or use a scheduled task / service wrapper if you manage it that way) so the copy isn't blocked by a locked binary.
 - Point the deployed client at your self-hosted rendezvous/relay server in Settings > Network (ID/Relay server + key), and separately configure Settings > Network > Admin Presence with the admin API's `host:port` and admin token — both must reference the **same** self-hosted server deployment, or the admin device list will show devices that "connect" flow can't reach (or vice versa).
 - There is no separate build/deploy path for the admin API client logic; it ships inside the same `rustdesk.exe` as the rest of the Flutter app.

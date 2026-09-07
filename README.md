@@ -12,6 +12,49 @@
 > **Misuse Disclaimer:** <br>
 > The developers of RustDesk do not condone or support any unethical or illegal use of this software. Misuse, such as unauthorized access, control or invasion of privacy, is strictly against our guidelines. The authors are not responsible for any misuse of the application.
 
+---
+
+## 🛠️ RustDeskAdmin — Custom Admin-Presence Fork
+
+This repository is a **private fork of the official [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) client**, part of the `RustDeskAdmin` project (paired with [`rustdeskadmin-server`](https://github.com/hrezenmsft/rustdeskadmin-server)). Everything below the divider is the unmodified upstream README; this section describes what is different in this fork.
+
+### What this fork adds
+
+- A desktop-only **Admin online devices** pane, embedded directly in the existing peer-tab space (beside Recent Sessions/Favorites/LAN), opened by a dedicated icon on the **first left-side position** of the tab bar.
+- The pane lists every device currently registered as online with your self-hosted rendezvous server (via a new authenticated server-side API — see `rustdeskadmin-server`), showing:
+  - Each device's **hostname** (from the server) as the display name, above its RustDesk ID — with an inline **rename** (pencil) action that lets you set a custom local label. The custom name is stored **only on this client**, is never sent to the server, and persists until you rename it again or delete the device row.
+  - A live indicator for whether the admin API server itself is reachable.
+  - Online/offline status per device, with **offline devices greyed out** and showing how long they've been offline.
+  - An **X** action to delete stale/offline rows you no longer want tracked.
+  - Devices are sorted **online-first, then alphabetically by name**, and the list/tile/grid visualization switch works the same as on every other peer tab.
+- Selecting an **online** device runs RustDesk's completely normal, unmodified connection flow for that device ID — target-side password, consent, and permission prompts are never bypassed or skipped.
+- A new **Settings > Network > Admin Presence** section to configure the admin API's `host:port` and admin token (stored locally; only the resulting short-lived session token is kept in memory).
+- This client never talks to a database or log file directly — it only calls the versioned, authenticated `GET /admin/v1/devices?status=online` HTTP API exposed by the paired server fork.
+
+### Documentation
+
+- **[docs/ADMIN_PRESENCE_DEVELOPMENT.md](docs/ADMIN_PRESENCE_DEVELOPMENT.md)** — full development-environment setup, build, and deployment instructions for this fork (Windows/Flutter toolchain, vcpkg static-FFmpeg workaround, etc.).
+- **[docs/ADMIN_PRESENCE_CHANGELOG.md](docs/ADMIN_PRESENCE_CHANGELOG.md)** — dated changelog of every change made in this fork, newest first.
+- **[docs/ADMIN_PRESENCE_AI_HANDOFF.md](docs/ADMIN_PRESENCE_AI_HANDOFF.md)** — a public-safe context primer for AI coding agents picking up this fork with no prior history.
+
+### Quick start (see the development doc for full detail)
+
+```powershell
+git clone https://github.com/hrezenmsft/rustdeskadmin-client.git
+cd rustdeskadmin-client
+git remote add upstream https://github.com/rustdesk/rustdesk.git
+git remote set-url --push upstream DISABLED
+# Follow docs/ADMIN_PRESENCE_DEVELOPMENT.md for full toolchain + vcpkg setup, then:
+cargo build --release --locked --features flutter,hwcodec --lib
+cd flutter && flutter build windows --release
+```
+
+Upstream project: **[rustdesk/rustdesk](https://github.com/rustdesk/rustdesk)** — this fork tracks it read-only via the `upstream` remote (push disabled) and only adds the administrator presence feature described above; it does not otherwise change RustDesk's protocol, security model, or behavior.
+
+---
+
+
+
 
 Chat with us: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
 
