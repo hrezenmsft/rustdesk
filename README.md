@@ -16,20 +16,22 @@
 
 ## 🛠️ RustDeskAdmin — Custom Admin-Presence Fork
 
-This repository is a **private fork of the official [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) client**, part of the `RustDeskAdmin` project (paired with [`rustdeskadmin-server`](https://github.com/hrezenmsft/rustdeskadmin-server)). Everything below the divider is the unmodified upstream README; this section describes what is different in this fork.
+This repository is a **custom fork of the official [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) client**, part of the `RustDeskAdmin` project (paired with [`rustdeskadmin-server`](https://github.com/hrezenmsft/rustdeskadmin-server)). Everything below the divider is the unmodified upstream README; this section describes what is different in this fork.
 
 ### What this fork adds
 
-- A desktop-only **Admin online devices** pane, embedded directly in the existing peer-tab space (beside Recent Sessions/Favorites/LAN), opened by a dedicated icon on the **first left-side position** of the tab bar.
-- The pane lists every device currently registered as online with your self-hosted rendezvous server (via a new authenticated server-side API — see `rustdeskadmin-server`), showing:
-  - Each device's **hostname** (from the server) as the display name, above its RustDesk ID — with an inline **rename** (pencil) action that lets you set a custom local label. The custom name is stored **only on this client**, is never sent to the server, and persists until you rename it again or delete the device row.
-  - A live indicator for whether the admin API server itself is reachable.
-  - Online/offline status per device, with **offline devices greyed out** and showing how long they've been offline.
-  - An **X** action to delete stale/offline rows you no longer want tracked.
-  - Devices are sorted **online-first, then alphabetically by name**, and the list/tile/grid visualization switch works the same as on every other peer tab.
-- Selecting an **online** device runs RustDesk's completely normal, unmodified connection flow for that device ID — target-side password, consent, and permission prompts are never bypassed or skipped.
-- A new **Settings > Network > Admin Presence** section to configure the admin API's `host:port` and, as of **v2.0.0**, a per-device **enrolled ed25519 key** (paste the private key printed by `rustdesk-utils genadminkey` on the server, then "Enroll key") as the primary way to authenticate — the key is stored locally (DPAPI-protected) and never leaves the device except as a signature; only the resulting short-lived session token is kept in memory. The old shared admin token is still supported as a deprecated, collapsed "legacy" option for v1.x migration.
-- This client never talks to a database or log file directly — it only calls the versioned, authenticated `POST /admin/v1/auth/challenge` + `POST /admin/v1/auth/verify` (or, legacy, `POST /admin/v1/auth/login`) and `GET /admin/v1/devices?status=online` HTTP APIs exposed by the paired server fork.
+- A Windows desktop-only **Admin online devices** pane embedded directly in the existing peer-tab space, opened by a dedicated icon in the **first left-side position** of the tab bar.
+- The pane lists devices currently online with your self-hosted RustDesk rendezvous deployment through the paired `rustdeskadmin-server` admin API, showing:
+  - A friendly device name above the RustDesk ID, with an inline **rename** action for a client-local label.
+  - A live indicator showing whether the admin API is reachable.
+  - Online/offline state, with missing devices retained as greyed-out stale entries that show offline duration.
+  - An **X** action to remove stale/offline rows you no longer want tracked locally.
+  - The same list/tile/grid visualization switch used by the standard peer tabs.
+- Selecting an **online** device runs RustDesk's normal, unmodified connection flow for that device ID. Target-side password, consent, and permission checks are never bypassed.
+- **As of v2.0.0, authentication is per-device ed25519 key enrollment only.** On the server, run `rustdesk-utils genadminkey <label>` once for each admin client, then paste the printed private key into **Settings > Network > Admin Presence** and click **Enroll key**. The key fingerprint shown in the client matches `rustdesk-utils listadminkeys` for verification.
+- **As of v2.0.0, there is no separate admin server address field.** The client reuses the host already configured for the RustDesk **ID Server** (`custom-rendezvous-server`) and always targets the admin API on fixed port `21114`. The Admin Presence dialog shows that resolved address read-only.
+- **Compatibility note:** v2.0.0 clients are compatible only with v2.0.0+ `rustdeskadmin-server` deployments.
+- This client never talks to a database or log file directly. It calls the versioned authenticated admin API exposed by the paired server fork and then launches the normal RustDesk connection flow.
 
 ### Documentation
 
@@ -39,7 +41,12 @@ This repository is a **private fork of the official [rustdesk/rustdesk](https://
 
 ### Quick start (see the development doc for full detail)
 
-**Recommended: install from the prebuilt Windows installer — no build required.** Download `rustdeskadmin-client-<version>-install.exe` from the **[Releases page](https://github.com/hrezenmsft/rustdeskadmin-client/releases)**, run it on the target machine, then point it at your `rustdeskadmin-server` deployment in Settings > Network (and Settings > Network > Admin Presence for the admin API host/token). See **[docs/ADMIN_PRESENCE_DEVELOPMENT.md § Production release package](docs/ADMIN_PRESENCE_DEVELOPMENT.md#production-release-package-recommended--no-local-build-required)** for the full walkthrough, including upgrading and uninstalling.
+**Recommended: install from the prebuilt Windows installer — no build required.** Download `rustdeskadmin-client-<version>-install.exe` from the **[Releases page](https://github.com/hrezenmsft/rustdeskadmin-client/releases)**, run it on the target machine, then configure:
+
+1. **Settings > Network > ID/Relay Server** to point at your `rustdeskadmin-server` deployment.
+2. **Settings > Network > Admin Presence** to confirm the resolved admin API address (`<your-id-server-host>:21114`) and enroll the private key printed by `rustdesk-utils genadminkey <label>`.
+
+See **[docs/ADMIN_PRESENCE_DEVELOPMENT.md § Production release package](docs/ADMIN_PRESENCE_DEVELOPMENT.md#production-release-package-recommended--no-local-build-required)** for the full walkthrough, including upgrading and uninstalling.
 
 Building from source instead:
 
@@ -225,4 +232,3 @@ Please ensure that you run these commands from the root of the RustDesk reposito
 ![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
 
 ![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
-

@@ -1,37 +1,31 @@
-﻿# Admin Presence Change Log
+# Admin Presence Change Log
 
 All notable changes to this custom administrator-presence feature are recorded here.
 
-Entries are grouped by date, newest first. Each dated section corresponds to one or more commits on that date; the `Unreleased` section at the top holds changes not yet committed.
+Entries are grouped by date, newest first.
 
-## Unreleased
+## v2.0.0 (2026-09-08)
 
-### Changed (v2.0.0 — breaking auth model change, paired with server v2.0.0)
+### Breaking changes
 
-- **Replaced the plaintext shared admin token with a per-client ed25519 keypair enrolled once via the server's `rustdesk-utils genadminkey` output.** The settings dialog (`desktop_setting_page.dart::_showAdminPresenceSettings`) now shows an "Admin key" section: paste the 64-byte base64 private key `genadminkey` printed once, click "Enroll key", and the client shows the enrolled key's fingerprint (matching the server's `admin_keys::fingerprint_of` byte-for-byte so it can be visually cross-checked against `rustdesk-utils listadminkeys`). A "Remove key from this device" button clears local enrollment only — it does not revoke the key server-side (`rustdesk-utils revokeadminkey` is still required for that).
-- Added `flutter/lib/models/admin_presence_keypair.dart`: keypair load/import/clear plus DPAPI (`CryptProtectData`/`CryptUnprotectData`, current-user scope, no extra entropy, no UI prompt) encrypt/decrypt of the private key seed at rest, using the `win32` package (already an existing dependency) — this is Windows-only, matching the fact that this admin client feature is already Windows-only. New local-option keys: `kOptionAdminPresencePrivateKeyEnc`, `kOptionAdminPresencePublicKey`.
-- This entire change is pure Dart: the admin-presence feature already made its HTTP calls via `package:http` rather than the Rust FFI bridge, so v2.0.0 needed **no changes to any Rust source file or the `flutter_rust_bridge` bindings** in this repo.
-- Uses `package:cryptography` (`^2.7.0`, new dependency, pure-Dart Ed25519 — no new native/FFI surface of its own) for keypair generation/signing. The server's `rustdesk-utils genadminkey` prints a 64-byte `sodiumoxide::crypto::sign::SecretKey` (seed(32) || public_key(32)); `admin_presence_keypair.dart::splitSodiumSecretKey` splits this into the 32-byte seed `cryptography`'s `Ed25519().newKeyPairFromSeed()` expects — this cross-library key-format assumption is covered by a new unit test (`test/admin_presence_keypair_test.dart`) that round-trips a real generated keypair through the split/rederive path, plus tests for the fingerprint algorithm and the exact detached-signature framing the server's `sign::verify` expects.
-- `admin_presence_model.dart` gained `loginWithKeyPair()` (performs `POST /admin/v1/auth/challenge` then `POST /admin/v1/auth/verify`, signing the returned nonce with the enrolled key) and `autoLogin()` (prefers the enrolled key over the legacy token if both are present). The old `login(token)` path (`POST /admin/v1/auth/login`) is kept only for v1.x migration and is now documented as deprecated in its doc comment; `hasSavedConfig` accepts either credential type.
-- The legacy "Admin token" field in the settings dialog was demoted into a collapsed "Legacy shared token (deprecated)" `ExpansionTile`, with helper text clarifying it is only used if no admin key is enrolled.
-- `flutter analyze` clean (0 new issues) across all touched files; new `flutter test test/admin_presence_keypair_test.dart` suite: 8/8 passing.
-
-### Changed
-
-- Expanded `docs/ADMIN_PRESENCE_DEVELOPMENT.md`'s "How to Deploy" section with a new "Production release package" subsection detailing the no-build install path in full: downloading the installer via `gh release download` or the web UI, running it, configuring server/admin-API settings, verifying the admin pane, upgrading, and uninstalling. The prior copy-the-Release-folder instructions were kept as a "Deploying an unpackaged build (lab/dev only)" subsection.
-- Added a "Quick start" summary of the recommended prebuilt-installer path to `README.md`, linking to the expanded development-doc section and the Releases page, ahead of the from-source build instructions.
+- Removed the legacy shared-token authentication path from the client documentation and release guidance. v2.0.0 clients use per-device ed25519 key enrollment only and are compatible only with v2.0.0+ `rustdeskadmin-server` deployments.
+- Removed the separate configurable admin server address from the client workflow. The Admin Presence dialog now reuses the host already configured for the RustDesk ID/rendezvous server and always targets admin API port `21114`.
 
 ### Added
 
-- Added inline rename ("edit"/pencil icon) on each device row in the admin online-devices pane. The custom display name is stored **locally on this client only** (never sent to the server), overrides the reported hostname, and persists across refreshes/reconnects until the administrator renames it again or deletes the device row.
-- Added fork-specific sections to the top-level `README.md` describing this fork's admin-presence feature, linking to the paired server fork and the unmodified upstream `rustdesk/rustdesk` project, and giving a quick-start clone/build snippet.
+- Added per-device ed25519 key enrollment in Settings > Network > Admin Presence. Administrators paste the private key printed once by `rustdesk-utils genadminkey <label>`, enroll it locally, and can verify the enrolled fingerprint against `rustdesk-utils listadminkeys`.
+- Added DPAPI-protected local storage for the enrolled admin private key material on Windows.
+- Added inline per-device rename support in the Admin online devices pane; rename overrides remain local to the admin client and are never sent to the server.
+- Added a public-safe AI handoff document plus expanded build, packaging, deployment, and release-installation guidance for this fork.
 
 ### Changed
 
-- Fixed the admin online-devices pane to honor the same list/tile/grid visualization switch used by Recent Sessions and every other peer tab (previously the pane always rendered a fixed list regardless of the selected view type).
-- Device list sort now explicitly sorts online devices first, then alphabetically by display name (custom name if set, otherwise hostname, otherwise ID), applied both on initial cached-list load and after every refresh.
-- Diagnosed and fixed a corrupted `desktop_multi_window_plugin.dll` in a stale local CMake build-tree cache on the development laptop (Windows reported `STATUS_INVALID_IMAGE_HASH` / error `0xc0e90002`) by clearing the plugin's CMake build directory and forcing `flutter build windows --release` to regenerate it; this was a local build-cache corruption issue, not a source-code defect (the same commit built and ran correctly on the endpoint test VM).
-- Repository renamed on GitHub from `rustdesk` to `rustdeskadmin-client` (origin remote updated to match; `upstream` remote unchanged, still points read-only at `rustdesk/rustdesk`).
+- Switched the client auth flow to the paired server's ed25519 challenge/verify API, while keeping downstream device-list behavior unchanged after JWT issuance.
+- Updated the Admin Presence dialog to show the resolved admin API address read-only instead of editable host/port fields.
+- Kept the admin pane embedded in the peer-tab area with the first-left selector icon, 5-second auto-refresh, API reachability indicator, local-client filtering, stale/offline retention with offline duration, and `X` deletion of stale rows.
+- Kept friendly-name display and local friendly-name overrides, and ensured the shared list/tile/grid visualization switch applies to the admin pane.
+- Sorted devices online-first, then alphabetically by display name.
+- Clarified public documentation, installer-based deployment guidance, and compatibility notes for the v2.0.0 release.
 
 ## 2026-09-07 01:23 (`e990e01d9` — Polish admin-presence UI, sanitize docs, add AI handoff and build/deploy guides)
 
@@ -44,11 +38,11 @@ Entries are grouped by date, newest first. Each dated section corresponds to one
 
 - Moved the admin selector to the first left-side icon (previously first-right, then a popup), removed the manual refresh and logout actions from the pane (the pane already auto-refreshes and auto-authenticates from saved settings).
 - Fixed friendly-device-name lookup so RustDesk IDs formatted with spaces (for example a 10-digit ID displayed as `1 262 916 439`) are normalized before comparison, so the hostname is found and shown instead of falling back to the raw ID.
-- Fixed an admin-presence device-list request that was sending a literal placeholder string instead of the real `Bearer <jwt>` Authorization header.
+- Fixed an admin-presence device-list request that was sending a literal placeholder string instead of the real `Authorization` header.
 - Added inline code comments at every admin-presence integration point (`admin_presence_dialog.dart`, `admin_presence_model.dart`, `peer_card.dart`, `peer_tab_page.dart`, `peers_view.dart`, `peer_tab_model.dart`, `desktop_setting_page.dart`, `consts.dart`) to make the customizations easy to locate and review.
-- Added public deployment guidance reminders in the docs about keeping the admin token high-entropy and rotating the JWT secret if disclosure is suspected.
+- Added public deployment guidance reminders in the docs about keeping administrative credentials high-entropy and rotating the JWT secret if disclosure is suspected.
 - Removed lab-specific hostnames, IP addresses, peer IDs, paths, generated keys, and credentials from public documentation.
-- Reorganized this changelog into dated sections (newest first) matching actual commit history instead of a single flat "Unreleased" list.
+- Reorganized this changelog into dated sections (newest first) matching actual commit history instead of a single flat `Unreleased` list.
 
 ## 2026-09-07 00:25 (`ab8fd959a` — Embed admin presence pane in peer tabs)
 
@@ -66,7 +60,7 @@ Entries are grouped by date, newest first. Each dated section corresponds to one
 
 ### Added
 
-- Documented that the admin API setting and normal RustDesk rendezvous/relay settings must point to the same self-hosted deployment for click-to-connect to find listed devices.
+- Documented that the admin API path and normal RustDesk rendezvous/relay settings must point to the same self-hosted deployment for click-to-connect to find listed devices.
 
 ## 2026-09-06 23:51 (`ef8121494` — Document admin presence deployment validation)
 
