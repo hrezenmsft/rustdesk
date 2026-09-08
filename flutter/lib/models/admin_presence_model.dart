@@ -97,6 +97,30 @@ class AdminOnlineDevice {
 /// `custom-rendezvous-server`) and always targets this port.
 const int kAdminPresenceApiPort = 21114;
 
+/// Admin-presence customization: thrown by [AdminPresenceModel]'s internal
+/// HTTPS-first/HTTP-fallback request helper when *neither* scheme could be
+/// reached at all (a transport-level failure — TLS handshake error,
+/// connection refused, timeout — as opposed to a normal HTTP error response
+/// like 401/500, which means the scheme itself worked). Carries the raw
+/// per-scheme error text so the UI can show a fully detailed, debuggable
+/// message instead of a generic "login failed".
+class AdminPresenceTransportException implements Exception {
+  final String host;
+  final Map<String, String> schemeErrors;
+
+  AdminPresenceTransportException(this.host, this.schemeErrors);
+
+  String describe() {
+    final parts = schemeErrors.entries
+        .map((e) => '${e.key.toUpperCase()} failed: ${e.value}')
+        .join('; ');
+    return '${translate('Failed to reach admin server')} ($host:$kAdminPresenceApiPort): $parts';
+  }
+
+  @override
+  String toString() => describe();
+}
+
 /// Admin-presence customization for this Windows client version: client for
 /// the custom admin presence API (`/admin/v1/...`).
 ///
@@ -111,6 +135,13 @@ class AdminPresenceModel with ChangeNotifier {
   String? error;
   bool serverOnline = false;
   List<AdminOnlineDevice> devices = [];
+
+  /// Admin-presence customization: which transport scheme actually succeeded
+  /// on the most recent request — `'https'`, `'http'` (fallback used), or
+  /// `null` if no request has succeeded yet this session. Session-only (not
+  /// persisted): the client always prefers HTTPS first on every request and
+  /// this simply reflects what worked last, for the lock/unlock indicator.
+  String? activeScheme;
 
   bool get isLoggedIn => _jwt != null;
 
@@ -220,8 +251,12 @@ class AdminPresenceModel with ChangeNotifier {
   /// Admin-presence customization (v2.0.0): primary login path — performs
   /// the ed25519 challenge/verify handshake using the keypair enrolled via
   /// `rustdesk-utils genadminkey` (see `admin_presence_keypair.dart`).
+  ///
+  /// Admin-presence customization: every request always tries HTTPS first
+  /// and transparently falls back to HTTP only on a transport-level failure
+  /// (see [_requestWithFallback]); there is no user-facing scheme setting.
   Future<bool> loginWithKeyPair() async {
-    if (_baseUrl().isEmpty) {
+    if (serverHost.isEmpty) {
       error = translate('Please input a valid admin server address');
       notifyListeners();
       return false;
@@ -236,46 +271,56 @@ class AdminPresenceModel with ChangeNotifier {
             'No admin key enrolled on this device. Import a key generated with rustdesk-utils genadminkey.');
         return false;
       }
-      final challengeUri = Uri.parse('${_baseUrl()}/admin/v1/auth/challenge');
-      final challengeResp = await http.post(challengeUri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'public_key': keyPair.publicKeyB64}));
-      serverOnline = true;
+      final challengeResp = await _requestWithFallback(
+        path: '/admin/v1/auth/challenge',
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'public_key': keyPair.publicKeyB64}),
+      );
       final challengeBody = decode_http_response(challengeResp);
       if (challengeResp.statusCode != 200) {
-        error = _extractError(challengeBody) ??
-            '${translate('Login failed with status')} ${challengeResp.statusCode}';
+        error =
+            '${translate('Login failed')} — ${_describeHttpError(challengeResp.statusCode, challengeBody)}';
         return false;
       }
       final nonce = jsonDecode(challengeBody)['nonce']?.toString();
       if (nonce == null || nonce.isEmpty) {
-        error = translate('Invalid response from admin server');
+        error =
+            '${translate('Invalid response from admin server')} (${translate('empty nonce in')} /admin/v1/auth/challenge ${translate('response')}: $challengeBody)';
         return false;
       }
       final signature = await keyPair.signB64(nonce);
-      final verifyUri = Uri.parse('${_baseUrl()}/admin/v1/auth/verify');
-      final verifyResp = await http.post(verifyUri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'public_key': keyPair.publicKeyB64,
-            'nonce': nonce,
-            'signature': signature,
-          }));
+      final verifyResp = await _requestWithFallback(
+        path: '/admin/v1/auth/verify',
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'public_key': keyPair.publicKeyB64,
+          'nonce': nonce,
+          'signature': signature,
+        }),
+      );
       final verifyBody = decode_http_response(verifyResp);
       if (verifyResp.statusCode == 200) {
         final map = jsonDecode(verifyBody);
         final jwt = map['access_token']?.toString();
         if (jwt == null || jwt.isEmpty) {
-          error = translate('Invalid response from admin server');
+          error =
+              '${translate('Invalid response from admin server')} (${translate('empty access_token in')} /admin/v1/auth/verify ${translate('response')}: $verifyBody)';
           return false;
         }
         _jwt = jwt;
         return true;
       } else {
-        error = _extractError(verifyBody) ??
-            '${translate('Login failed with status')} ${verifyResp.statusCode}';
+        error =
+            '${translate('Login failed')} — ${_describeHttpError(verifyResp.statusCode, verifyBody)}';
         return false;
       }
+    } on AdminPresenceTransportException catch (e) {
+      serverOnline = false;
+      activeScheme = null;
+      error = e.describe();
+      return false;
     } catch (e) {
       serverOnline = false;
       error = '${translate('Failed to reach admin server')}: $e';
@@ -286,10 +331,58 @@ class AdminPresenceModel with ChangeNotifier {
     }
   }
 
-  String _baseUrl() {
+  /// Admin-presence customization: issues a single HTTP request against the
+  /// admin API, always trying `https://` first and only falling back to
+  /// `http://` when the HTTPS attempt fails at the *transport* level (TLS
+  /// handshake error, connection refused, timeout, etc.) — a normal HTTP
+  /// error response (4xx/5xx) means the scheme itself worked and is not
+  /// retried. Sets [activeScheme]/[serverOnline] on success and throws
+  /// [AdminPresenceTransportException] with both schemes' raw error text if
+  /// neither is reachable.
+  Future<http.Response> _requestWithFallback({
+    required String path,
+    required String method,
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
     final host = serverHost;
-    if (host.isEmpty) return '';
-    return 'http://$host:$kAdminPresenceApiPort';
+    if (host.isEmpty) {
+      throw AdminPresenceTransportException(
+          host, {'config': translate('Admin server address is not configured')});
+    }
+    final schemeErrors = <String, String>{};
+    for (final scheme in const ['https', 'http']) {
+      final uri = Uri.parse('$scheme://$host:$kAdminPresenceApiPort$path');
+      try {
+        final resp = method == 'GET'
+            ? await http.get(uri, headers: headers)
+            : await http.post(uri, headers: headers, body: body);
+        serverOnline = true;
+        activeScheme = scheme;
+        return resp;
+      } catch (e) {
+        schemeErrors[scheme] = e.toString();
+      }
+    }
+    throw AdminPresenceTransportException(host, schemeErrors);
+  }
+
+  /// Admin-presence customization: builds a detailed, debuggable error
+  /// message from a non-2xx admin API response — includes the scheme that
+  /// was actually used, the HTTP status, the server-reported error field
+  /// when present, and otherwise a raw body snippet so nothing is hidden
+  /// from the administrator.
+  String _describeHttpError(int statusCode, String body) {
+    final scheme = (activeScheme ?? '?').toUpperCase();
+    final serverMsg = _extractError(body);
+    final buffer = StringBuffer('$scheme $statusCode');
+    if (serverMsg != null && serverMsg.isNotEmpty) {
+      buffer.write(': $serverMsg');
+    } else if (body.isNotEmpty) {
+      final snippet = body.length > 300 ? '${body.substring(0, 300)}…' : body;
+      buffer.write(': $snippet');
+    }
+    return buffer.toString();
   }
 
   /// Admin-presence customization: fetches the current online-device list.
@@ -304,13 +397,13 @@ class AdminPresenceModel with ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final uri =
-          Uri.parse('${_baseUrl()}/admin/v1/devices?status=online');
       final jwt = _jwt!;
       final headers = <String, String>{'Authorization': 'Bearer $jwt'};
-      final resp = await http
-          .get(uri, headers: headers);
-      serverOnline = true;
+      final resp = await _requestWithFallback(
+        path: '/admin/v1/devices?status=online',
+        method: 'GET',
+        headers: headers,
+      );
       final body = decode_http_response(resp);
       if (resp.statusCode == 200) {
         final map = jsonDecode(body);
@@ -328,10 +421,14 @@ class AdminPresenceModel with ChangeNotifier {
         error = translate('Session expired, please login again');
         return false;
       } else {
-        error = _extractError(body) ??
-            '${translate('Failed with status')} ${resp.statusCode}';
+        error = _describeHttpError(resp.statusCode, body);
         return false;
       }
+    } on AdminPresenceTransportException catch (e) {
+      serverOnline = false;
+      activeScheme = null;
+      error = e.describe();
+      return false;
     } catch (e) {
       serverOnline = false;
       error = '${translate('Failed to reach admin server')}: $e';

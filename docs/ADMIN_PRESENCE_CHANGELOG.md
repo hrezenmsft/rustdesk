@@ -4,6 +4,18 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 Entries are grouped by date, newest first.
 
+## v2.2.0 (2026-09-08)
+
+### Fixed
+
+- Fixed [#1](https://github.com/hrezenmsft/rustdeskadmin-client/issues/1): the Admin Presence client hardcoded `http://` and could not reach an admin API fronted by a TLS-terminating reverse proxy (HTTPS-only listener), showing a generic "Login failed with status 400".
+
+### Changed
+
+- Every Admin Presence request (login and device-list refresh) now tries `https://` first automatically and transparently falls back to `http://` only on a transport-level failure (TLS handshake error, connection refused, timeout) — a normal HTTP error response (4xx/5xx) is not retried, since that means the scheme itself worked. There is no user-facing scheme setting; this is fully automatic.
+- Added a small padlock indicator next to the online-device count showing which transport actually succeeded on the last request: a locked, green padlock for HTTPS, an open, orange padlock for the HTTP fallback. Hover for a plain-language tooltip.
+- Significantly expanded the detail available from the existing error-info icon: it now reports which scheme(s) were attempted, the HTTP status code, the raw server-reported error field (or a body snippet when the server didn't return a structured error), and the underlying transport exception text when neither scheme was reachable — all still copyable with a single click for pasting into a bug report.
+
 ## v2.1.0 (2026-09-08)
 
 ### Changed

@@ -151,6 +151,30 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            // Admin-presence customization: shows which transport scheme is
+            // actually in use — the client always tries HTTPS first and only
+            // falls back to HTTP on a transport-level failure (see
+            // AdminPresenceModel._requestWithFallback). A locked padlock
+            // means the last successful request used HTTPS; an open padlock
+            // means it fell back to plain HTTP (not encrypted).
+            if (model.activeScheme != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Tooltip(
+                  message: model.activeScheme == 'https'
+                      ? translate('Connected via HTTPS')
+                      : translate('Connected via HTTP (not encrypted)'),
+                  child: Icon(
+                    model.activeScheme == 'https'
+                        ? Icons.lock
+                        : Icons.lock_open,
+                    size: 15,
+                    color: model.activeScheme == 'https'
+                        ? Colors.green
+                        : Colors.orange,
+                  ),
+                ),
+              ),
             // Admin-presence customization: a compact, stable indicator next to
             // the online count instead of a full-width error block that
             // reflows/flickers on every auto-refresh and is hard to read or
