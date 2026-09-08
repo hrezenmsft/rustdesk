@@ -90,15 +90,22 @@ class AdminOnlineDevice {
       };
 }
 
+/// Admin-presence customization (v2.0.0): fixed TCP port the admin API
+/// listens on. As of v2.0.0 the client no longer lets the user configure a
+/// separate admin-presence server address/port: it reuses the same host
+/// already configured for the ID/rendezvous server (option
+/// `custom-rendezvous-server`) and always targets this port.
+const int kAdminPresenceApiPort = 21114;
+
 /// Admin-presence customization for this Windows client version: client for
 /// the custom admin presence API (`/admin/v1/...`).
 ///
-/// The admin server address (host:port) and admin token are persisted locally
-/// via [kOptionAdminPresenceServer] and [kOptionAdminPresenceToken] so the
-/// admin view can reconnect automatically. The server-issued JWT is kept only
-/// in memory for the lifetime of the app session.
+/// As of v2.0.0 the admin API host is derived from the ID/rendezvous server
+/// address (option `custom-rendezvous-server`, configured in Settings >
+/// Network) with the fixed [kAdminPresenceApiPort] admin port — there is no
+/// separate admin-presence server address setting anymore. The server-issued
+/// JWT is kept only in memory for the lifetime of the app session.
 class AdminPresenceModel with ChangeNotifier {
-  String _server;
   String? _jwt;
   bool loading = false;
   String? error;
@@ -106,34 +113,55 @@ class AdminPresenceModel with ChangeNotifier {
   List<AdminOnlineDevice> devices = [];
 
   bool get isLoggedIn => _jwt != null;
-  String get server => _server;
 
-  /// Admin-presence customization (v2.0.0): true once the admin server
-  /// address is set and *either* an enrolled ed25519 keypair (preferred) or
-  /// a legacy shared admin token is available to authenticate with.
+  /// Admin-presence customization (v2.0.0): the host the admin API will be
+  /// reached at, i.e. the configured ID/rendezvous server with any port
+  /// suffix stripped. Empty if the ID server isn't configured yet.
+  String get serverHost => _idServerHost();
+
+  /// Admin-presence customization (v2.0.0): the full admin API base address
+  /// (host:port) that will be used, for display purposes in Settings.
+  String get server =>
+      serverHost.isEmpty ? '' : '$serverHost:$kAdminPresenceApiPort';
+
+  /// Admin-presence customization (v2.0.0): true once the ID/rendezvous
+  /// server address is configured and a per-client ed25519 keypair has been
+  /// enrolled on this machine — the two prerequisites to auto-login.
   bool get hasSavedConfig =>
-      bind.mainGetLocalOption(key: kOptionAdminPresenceServer).isNotEmpty &&
-      (bind
-              .mainGetLocalOption(key: kOptionAdminPresencePublicKey)
-              .isNotEmpty ||
-          bind.mainGetLocalOption(key: kOptionAdminPresenceToken).isNotEmpty);
+      serverHost.isNotEmpty &&
+      bind.mainGetLocalOption(key: kOptionAdminPresencePublicKey).isNotEmpty;
 
   /// Admin-presence customization (v2.0.0): true once a per-client ed25519
   /// keypair has been enrolled on this machine (see
-  /// `admin_presence_keypair.dart`). When true, [autoLogin] always prefers
-  /// key-based auth over the deprecated shared-token login.
+  /// `admin_presence_keypair.dart`). This is the only supported auth method
+  /// as of v2.0.0 — the legacy shared-token login has been removed and
+  /// v2.0.0 clients are not compatible with pre-2.0.0 servers.
   bool get hasEnrolledKey =>
       bind.mainGetLocalOption(key: kOptionAdminPresencePublicKey).isNotEmpty;
 
-  AdminPresenceModel()
-      : _server = bind.mainGetLocalOption(key: kOptionAdminPresenceServer) {
+  AdminPresenceModel() {
     devices = _loadCachedDevices();
   }
 
-  void setServer(String server) {
-    _server = server.trim();
-    bind.mainSetLocalOption(key: kOptionAdminPresenceServer, value: _server);
-    notifyListeners();
+  /// Admin-presence customization (v2.0.0): reads the configured
+  /// ID/rendezvous server address and strips any `:port` suffix, since the
+  /// admin API always uses [kAdminPresenceApiPort] regardless of the ID
+  /// server's own (rendezvous) port.
+  String _idServerHost() {
+    final raw =
+        bind.mainGetOptionSync(key: 'custom-rendezvous-server').trim();
+    if (raw.isEmpty) return '';
+    var host = raw;
+    if (host.startsWith('http://')) host = host.substring('http://'.length);
+    if (host.startsWith('https://')) host = host.substring('https://'.length);
+    final colonIdx = host.lastIndexOf(':');
+    if (colonIdx > 0 && !host.contains(']', colonIdx)) {
+      final maybePort = host.substring(colonIdx + 1);
+      if (int.tryParse(maybePort) != null) {
+        host = host.substring(0, colonIdx);
+      }
+    }
+    return host;
   }
 
   /// Admin-presence customization (v2.0.0): imports a private key produced
@@ -157,29 +185,21 @@ class AdminPresenceModel with ChangeNotifier {
   /// from this machine only (does not revoke it server-side).
   static void unenrollKey() => clearAdminPresenceKeyPair();
 
-  static String savedToken() =>
-      bind.mainGetLocalOption(key: kOptionAdminPresenceToken);
-
-  /// Admin-presence customization (v2.0.0): logs in using whichever
-  /// credential is available, preferring the enrolled ed25519 keypair over
-  /// the deprecated shared admin token.
+  /// Admin-presence customization (v2.0.0): logs in using the enrolled
+  /// ed25519 keypair. The legacy shared admin token login has been removed
+  /// in v2.0.0 — this client is only compatible with v2.0.0+ servers.
   Future<bool> autoLogin() async {
-    _server = bind.mainGetLocalOption(key: kOptionAdminPresenceServer);
-    if (_server.isEmpty) {
+    if (serverHost.isEmpty) {
       error = translate('Configure admin presence in Settings > Network');
       notifyListeners();
       return false;
     }
-    if (hasEnrolledKey) {
-      return loginWithKeyPair();
-    }
-    final token = savedToken();
-    if (token.isEmpty) {
+    if (!hasEnrolledKey) {
       error = translate('Configure admin presence in Settings > Network');
       notifyListeners();
       return false;
     }
-    return login(token);
+    return loginWithKeyPair();
   }
 
   /// Admin-presence customization (v2.0.0): primary login path — performs
@@ -252,54 +272,9 @@ class AdminPresenceModel with ChangeNotifier {
   }
 
   String _baseUrl() {
-    final s = _server.trim();
-    if (s.isEmpty) return '';
-    if (s.startsWith('http://') || s.startsWith('https://')) return s;
-    return 'http://$s';
-  }
-
-  /// Admin-presence customization: logs into the admin API with the saved
-  /// shared admin token and keeps only the resulting short-lived JWT in
-  /// memory. Deprecated in v2.0.0 in favor of [loginWithKeyPair]; kept for
-  /// servers that have not migrated off `ADMIN_API_TOKEN_HASH` yet.
-  Future<bool> login(String token) async {
-    if (_baseUrl().isEmpty) {
-      error = translate('Please input a valid admin server address');
-      notifyListeners();
-      return false;
-    }
-    loading = true;
-    error = null;
-    notifyListeners();
-    try {
-      final uri = Uri.parse('${_baseUrl()}/admin/v1/auth/login');
-      final resp = await http.post(uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'token': token}));
-      serverOnline = true;
-      final body = decode_http_response(resp);
-      if (resp.statusCode == 200) {
-        final map = jsonDecode(body);
-        final jwt = map['access_token']?.toString();
-        if (jwt == null || jwt.isEmpty) {
-          error = translate('Invalid response from admin server');
-          return false;
-        }
-        _jwt = jwt;
-        return true;
-      } else {
-        error = _extractError(body) ??
-            '${translate('Login failed with status')} ${resp.statusCode}';
-        return false;
-      }
-    } catch (e) {
-      serverOnline = false;
-      error = '${translate('Failed to reach admin server')}: $e';
-      return false;
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+    final host = serverHost;
+    if (host.isEmpty) return '';
+    return 'http://$host:$kAdminPresenceApiPort';
   }
 
   /// Admin-presence customization: fetches the current online-device list.

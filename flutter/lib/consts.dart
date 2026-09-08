@@ -96,10 +96,13 @@ const String kOptionWhitelist = "whitelist";
 const String kOptionIdWhitelist = "id-whitelist";
 const String kOptionEnableAbr = "enable-abr";
 const String kOptionEnableRecordSession = "enable-record-session";
-// Admin-presence customization for this Windows client version: saved endpoint,
-// saved admin token, and stale-device cache for the embedded admin view.
-const String kOptionAdminPresenceServer = "admin-presence-server";
-const String kOptionAdminPresenceToken = "admin-presence-token";
+// Admin-presence customization for this Windows client version: stale-device
+// cache for the embedded admin view. The legacy shared admin token option
+// was removed in v2.0.0 — this client only supports ed25519 key-based auth
+// and is not compatible with pre-2.0.0 servers. As of v2.0.0 the admin API
+// address is no longer separately configured: it reuses the ID/rendezvous
+// server host (option `custom-rendezvous-server`) with a fixed admin API
+// port (see `kAdminPresenceApiPort` in admin_presence_model.dart).
 const String kOptionAdminPresenceDevices = "admin-presence-devices";
 // Admin-presence customization (v2.0.0): DPAPI-encrypted (base64) ed25519
 // private key and plaintext base64 public key for per-client key-based admin

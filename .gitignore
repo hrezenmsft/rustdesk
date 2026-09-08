@@ -58,3 +58,6 @@ libsciter.dylib
 flutter/web/
 # libdrmtap is cloned at build time by build.py (not a submodule)
 /third_party/libdrmtap/
+
+# Portable build metadata (auto-generated timestamp)
+libs/portable/app_metadata.toml

@@ -15,7 +15,7 @@
 //   Windows-only per the project's scope.
 // - Storage location reuses the existing local-option mechanism
 //   (`bind.mainGetLocalOption`/`mainSetLocalOption`) already used for
-//   [kOptionAdminPresenceServer] etc., so no new storage subsystem is
+//   [kOptionAdminPresenceDevices] etc., so no new storage subsystem is
 //   introduced.
 import 'dart:convert';
 import 'dart:ffi';

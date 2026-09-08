@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dynamic_layouts/dynamic_layouts.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/models/admin_presence_model.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
@@ -99,10 +100,9 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
             ),
             const SizedBox(height: 16),
             if (model.error != null)
-              Text(
-                model.error!,
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
+              Align(
+                alignment: Alignment.center,
+                child: _AdminPresenceErrorIndicator(error: model.error!),
               ),
             const SizedBox(height: 8),
             Align(
@@ -148,21 +148,29 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
                 '${translate('Server')}: ${model.server}  -  '
                 '$onlineCount/${model.devices.length} ${translate('Online')}',
                 style: Theme.of(context).textTheme.titleMedium,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            // Admin-presence customization: a compact, stable indicator next to
+            // the online count instead of a full-width error block that
+            // reflows/flickers on every auto-refresh and is hard to read or
+            // copy. Hover to read the full error; click to copy it.
+            if (model.error != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: _AdminPresenceErrorIndicator(error: model.error!),
+              ),
             if (model.loading)
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
           ],
         ),
-        if (model.error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(model.error!, style: const TextStyle(color: Colors.red)),
-          ),
         Expanded(
           child: model.devices.isEmpty
               ? Center(child: Text(translate('No devices online')))
@@ -397,5 +405,48 @@ class _AdminPresenceDeviceCard extends StatelessWidget {
       return '${duration.inMinutes}m ${duration.inSeconds % 60}s';
     }
     return '${duration.inSeconds}s';
+  }
+}
+
+/// Admin-presence customization: compact indicator shown when the admin
+/// presence API request fails (e.g. server unreachable/misconfigured).
+///
+/// Replaces a previous full-width red error [Text] that reflowed/flickered on
+/// every automatic refresh and was too long to read or select. Hovering the
+/// icon shows the full latest error message as a tooltip; clicking it copies
+/// the message to the clipboard so it can be pasted elsewhere for
+/// troubleshooting.
+class _AdminPresenceErrorIndicator extends StatelessWidget {
+  const _AdminPresenceErrorIndicator({Key? key, required this.error})
+      : super(key: key);
+
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: error,
+      preferBelow: true,
+      textAlign: TextAlign.left,
+      waitDuration: const Duration(milliseconds: 300),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          await Clipboard.setData(ClipboardData(text: error));
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(translate('Copied')),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        child: const Padding(
+          padding: EdgeInsets.all(2),
+          child: Icon(Icons.error_outline, size: 16, color: Colors.red),
+        ),
+      ),
+    );
   }
 }

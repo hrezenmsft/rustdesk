@@ -1871,15 +1871,11 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _showAdminPresenceSettings() async {
-    // Admin-presence customization: persist the API endpoint locally so the
-    // embedded admin pane can auto-login (preferring an enrolled ed25519
-    // key, see `admin_presence_model.dart::autoLogin`) and auto-refresh.
-    final serverController = TextEditingController(
-      text: bind.mainGetLocalOption(key: kOptionAdminPresenceServer),
-    );
-    final tokenController = TextEditingController(
-      text: bind.mainGetLocalOption(key: kOptionAdminPresenceToken),
-    );
+    // Admin-presence customization (v2.0.0): the admin API address is no
+    // longer separately configured — it reuses the ID/rendezvous server
+    // host (Settings > Network > ID Server) with the fixed admin API port.
+    // Shown here read-only so the administrator can see what will be used.
+    final resolvedAddress = AdminPresenceModel().server;
     final privateKeyController = TextEditingController();
     String? enrolledFingerprint = await AdminPresenceModel.enrolledKeyFingerprint();
     String? enrollError;
@@ -1897,10 +1893,18 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: serverController,
+                    readOnly: true,
+                    enabled: false,
+                    controller: TextEditingController(
+                      text: resolvedAddress.isEmpty
+                          ? translate('Not set')
+                          : resolvedAddress,
+                    ),
                     decoration: InputDecoration(
-                      labelText: translate('Admin server address (host:port)'),
-                      hintText: '172.27.17.85:21114',
+                      labelText: translate('Admin server address'),
+                      helperText: translate(
+                          'Uses the ID Server host from Settings > Network with the fixed admin API port.'),
+                      helperMaxLines: 3,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1958,23 +1962,6 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
                       child: Text(translate('Enroll key')),
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    title: Text(translate('Legacy shared token (deprecated)'),
-                        style: TextStyle(fontSize: 13)),
-                    children: [
-                      TextField(
-                        controller: tokenController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: translate('Admin token'),
-                          helperText: translate(
-                              'Only used if no admin key is enrolled above. Migrate to a key when possible.'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -1985,17 +1972,9 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
               child: Text(translate('Cancel')),
             ),
             ElevatedButton(
-              onPressed: () async {
-                await bind.mainSetLocalOption(
-                  key: kOptionAdminPresenceServer,
-                  value: serverController.text.trim(),
-                );
-                await bind.mainSetLocalOption(
-                  key: kOptionAdminPresenceToken,
-                  value: tokenController.text,
-                );
+              onPressed: () {
+                Navigator.of(context).pop();
                 if (mounted) {
-                  Navigator.of(context).pop();
                   showToast(translate('Successful'));
                   setState(() {});
                 }
@@ -2006,8 +1985,6 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
         ),
       ),
     );
-    serverController.dispose();
-    tokenController.dispose();
     privateKeyController.dispose();
   }
 }
