@@ -65,3 +65,4 @@ libs/portable/app_metadata.toml
 # Local packaged release artifacts (attached to GitHub Releases, not committed)
 libs/portable/*.zip
 libs/portable/*-install.exe
+libs/portable/*.msi

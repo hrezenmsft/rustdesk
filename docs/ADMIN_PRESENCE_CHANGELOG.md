@@ -16,6 +16,10 @@ Entries are grouped by date, newest first.
 - Added a small padlock indicator next to the online-device count showing which transport actually succeeded on the last request: a locked, green padlock for HTTPS, an open, orange padlock for the HTTP fallback. Hover for a plain-language tooltip.
 - Significantly expanded the detail available from the existing error-info icon: it now reports which scheme(s) were attempted, the HTTP status code, the raw server-reported error field (or a body snippet when the server didn't return a structured error), and the underlying transport exception text when neither scheme was reachable — all still copyable with a single click for pasting into a bug report.
 
+### Packaging
+
+- The v2.2.0 GitHub release adds a native MSI package (`rustdeskadmin-client-2.2.0-x64.msi`, built with the existing WiX v4 project under `res/msi`) alongside the self-extracting installer and portable zip, for unattended/silent deployment (`msiexec /i rustdeskadmin-client-2.2.0-x64.msi /qn`) and Group Policy/SCCM distribution.
+
 ## v2.1.0 (2026-09-08)
 
 ### Changed
