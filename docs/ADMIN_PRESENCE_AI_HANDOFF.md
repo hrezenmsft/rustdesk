@@ -26,25 +26,28 @@ rustdeskadmin-server/
 
 Push only to your forks. Keep upstream remotes fetch-only or set their push URL to a disabled value.
 
-## 3. Current release state: v2.0.0
+## 3. Current release state: v2.2.0
 
 The current client state is:
 
 - Windows-only admin-presence UI implemented in Flutter.
 - Embedded **Admin online devices** pane selected by the first icon on the left side of the peer-tab row.
-- Auto-refresh every 5 seconds.
-- Friendly device names when available, plus a client-local rename override per device.
-- API reachability indicator.
+- Auto-refresh every 5 seconds, gated by a user-visible **Auto refresh** toggle (refresh icon + checkbox) next to the online-device count; enabled by default, and the user's choice persists locally across restarts.
+- The pane header shows only the left-aligned `x/x Online` count — no server address string is shown there (that lives in Settings > Network > Admin Presence instead).
+- Friendly device names default to the device's own hostname (as reported by the admin API / local peer cache) rather than repeating the RustDesk ID, plus a client-local rename override per device.
+- Every admin API request tries `https://` first automatically and transparently falls back to `http://` only on a transport-level failure (TLS handshake error, connection refused, timeout); a normal HTTP error response is never retried. There is no user-facing scheme setting.
+- A padlock indicator next to the online-device count shows which transport actually succeeded on the last request: locked/green for HTTPS, open/orange for the HTTP fallback; hidden until a request has succeeded at least once.
+- The error-info icon reports verbose diagnostics: scheme(s) attempted, HTTP status code, server-reported error field or body snippet, and raw transport exception text when neither scheme is reachable.
 - Local-admin-client filtering.
 - Stale/offline device retention with offline duration and per-row delete.
 - Shared list/tile/grid visualization support.
 - Online-first, then alphabetical sorting.
 
-### v2.0.0 compatibility rules
+### v2.0.0+ compatibility rules
 
 - **Auth model:** per-device ed25519 key enrollment only.
-- **Server compatibility:** v2.0.0 clients require v2.0.0+ `rustdeskadmin-server` deployments.
-- **Admin API address:** no separate admin host setting exists anymore. The client reuses the host configured for RustDesk's ID/rendezvous server and always connects to admin API port `21114`.
+- **Server compatibility:** v2.x clients require v2.0.0+ `rustdeskadmin-server` deployments (v2.1.0/v2.2.0 client changes are client-only; no server-side changes were required).
+- **Admin API address:** no separate admin host setting exists anymore. The client reuses the host configured for RustDesk's ID/rendezvous server, tries `https://` first then falls back to `http://` automatically, and always connects to admin API port `21114`.
 
 ## 4. Client auth and settings model
 
@@ -71,7 +74,7 @@ The normal RustDesk server host still comes from the existing `custom-rendezvous
 
 | File | Purpose |
 |---|---|
-| `flutter/lib/models/admin_presence_model.dart` | Admin API auth, JWT handling, refresh logic, device caching, local-ID filtering, fixed port resolution (`21114`). |
+| `flutter/lib/models/admin_presence_model.dart` | Admin API auth, JWT handling, HTTPS-first/HTTP-fallback transport (`_requestWithFallback`), verbose transport/HTTP error builders (`AdminPresenceTransportException`, `_describeHttpError`), `activeScheme` (session-only, drives the padlock icon), refresh logic, device caching, local-ID filtering, fixed port resolution (`21114`). |
 | `flutter/lib/models/admin_presence_keypair.dart` | Key import/load/clear, fingerprint derivation, DPAPI-protected private-key storage. |
 | `flutter/lib/common/widgets/admin_presence_dialog.dart` | Embedded admin pane and device cards. |
 | `flutter/lib/common/widgets/peer_tab_page.dart` | Adds the first-left admin selector icon and renders the admin pane. |
@@ -95,7 +98,8 @@ The normal RustDesk server host still comes from the existing `custom-rendezvous
 - Shows offline duration for stale rows.
 - Allows deleting stale rows with an `X`.
 - Filters out the local admin client's own RustDesk ID.
-- Shows a friendly name above the ID when the API or local peer caches provide one.
+- Shows a friendly name above the ID when the API or local peer caches provide one; defaults to the device's own hostname rather than repeating its RustDesk ID when no local rename override is set.
+- Shows a padlock icon (locked/green = HTTPS, open/orange = HTTP fallback) next to the online-device count once at least one request has succeeded.
 
 Clicking an online row calls the existing `connect(context, id)` path.
 
@@ -158,7 +162,7 @@ For docs-only changes, code validation is not required.
 
 ## 8. Deployment summary
 
-Recommended end-user path: install the release asset `rustdeskadmin-client-<version>-install.exe` from this repo's Releases page.
+Recommended end-user path: install one of the release assets from this repo's Releases page — `rustdeskadmin-client-<version>-install.exe` (self-extracting installer), `rustdeskadmin-client-<version>-x64.msi` (native MSI, suited for silent/unattended install and Group Policy/SCCM), or `rustdeskadmin-client-<version>-portable.zip` (no-install, extract and run).
 
 After installation:
 

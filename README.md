@@ -32,7 +32,7 @@ This repository is a **custom fork of the official [rustdesk/rustdesk](https://g
 1. **Settings > Network > ID/Relay Server** to point at your `rustdeskadmin-server` deployment.
 2. **Settings > Network > Admin Presence** to confirm the resolved admin API address (`<your-id-server-host>:21114`) and enroll the private key printed by `rustdesk-utils genadminkey <label>`.
 
-A portable, no-install package (`rustdeskadmin-client-<version>-portable.zip`) is also attached to every release — extract it anywhere and run `rustdesk.exe` directly.
+A native MSI installer (`rustdeskadmin-client-<version>-x64.msi`) is also attached to every release, suited for silent/unattended installs (`msiexec /i rustdeskadmin-client-<version>-x64.msi /qn`) and Group Policy/SCCM distribution. A portable, no-install package (`rustdeskadmin-client-<version>-portable.zip`) is attached too — extract it anywhere and run `rustdesk.exe` directly.
 
 See **[docs/ADMIN_PRESENCE_DEVELOPMENT.md § Production release package](docs/ADMIN_PRESENCE_DEVELOPMENT.md#production-release-package-recommended--no-local-build-required)** for the full walkthrough, including upgrading and uninstalling.
 

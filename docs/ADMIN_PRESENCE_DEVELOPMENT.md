@@ -94,7 +94,7 @@ The client must never read a shared file or database directly.
 
 ## How to Package a Windows Installer
 
-This fork uses RustDesk's existing self-extracting "portable" installer packer (`libs/portable`); there is no MSI/Inno Setup step.
+This fork ships three package formats: RustDesk's existing self-extracting "portable" installer packer (`libs/portable`), a plain portable zip, and a native MSI built from the also-upstream `res/msi` WiX v4 project. There is no Inno Setup step.
 
 1. Build the Rust release library and the Flutter Windows app as in **How to Build** above.
 2. Build the virtual-display helper DLL and copy it into the Release folder:
@@ -119,25 +119,41 @@ This fork uses RustDesk's existing self-extracting "portable" installer packer (
    ```powershell
    Compress-Archive -Path "flutter\build\windows\x64\runner\Release\*" -DestinationPath ".\rustdeskadmin-client-<version>-portable.zip" -CompressionLevel Optimal
    ```
-6. Validate on a disposable machine or VM snapshot before shipping.
+6. Optionally, also build a native MSI with the WiX v4 project under `res\msi` (requires the .NET SDK; `winget install Microsoft.DotNet.SDK.8`):
+   ```powershell
+   Copy-Item -Recurse flutter\build\windows\x64\runner\Release rustdesk
+   cd res\msi
+   python preprocess.py --arp -d ..\..\rustdesk -v <version> --revision-version 0
+   & 'C:\path\to\nuget.exe' restore msi.sln
+   & $env:ComSpec /c 'call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=x64 >nul && msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10'
+   Copy-Item Package\bin\x64\Release\en-us\Package.msi ..\..\rustdeskadmin-client-<version>-x64.msi
+   cd ..\..
+   git checkout -- res/msi
+   Remove-Item -Recurse -Force rustdesk
+   ```
+   The MSI supports silent/unattended install (`msiexec /i rustdeskadmin-client-<version>-x64.msi /qn`) and Group Policy/SCCM distribution.
+7. Validate on a disposable machine or VM snapshot before shipping.
 
 ## How to Deploy
 
 ### Production release package (recommended — no local build required)
 
-Every `vX.Y.Z` tag on this repo produces two Windows packages attached to the GitHub release:
+Every `vX.Y.Z` tag on this repo produces three Windows packages attached to the GitHub release:
 - `rustdeskadmin-client-<version>-install.exe` — self-extracting installer (installs to `C:\Program Files\RustDesk`).
+- `rustdeskadmin-client-<version>-x64.msi` — native MSI installer; suited for silent/unattended install and Group Policy/SCCM distribution.
 - `rustdeskadmin-client-<version>-portable.zip` — portable, no-install package; extract anywhere and run `rustdesk.exe` directly.
 
 1. **Download a package** from the Releases page:
    ```powershell
    gh release list --repo hrezenmsft/rustdeskadmin-client --limit 1
    gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-install.exe" --dir .
+   # or, for the MSI:
+   gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-x64.msi" --dir .
    # or, for the portable package:
    gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-portable.zip" --dir .
    ```
    or download it manually from `https://github.com/hrezenmsft/rustdeskadmin-client/releases`.
-2. **Run the installer**, or **extract the portable zip** and run `rustdesk.exe` from the extracted folder, on the target Windows machine.
+2. **Run the installer** (`.exe` or `msiexec /i <file>.msi`), or **extract the portable zip** and run `rustdesk.exe` from the extracted folder, on the target Windows machine.
 3. **Point the client at your server** in Settings > Network by setting the ID/Relay server address and key to your `rustdeskadmin-server` deployment.
 4. **Open Settings > Network > Admin Presence**. The dialog should show the resolved admin API address using the same host as the configured ID Server with fixed port `21114`. Enroll the private key printed by `rustdesk-utils genadminkey <label>`.
 5. **Verify** that the admin icon opens the Admin Devices pane, the pane refreshes automatically, and selecting an online device launches the normal connection flow.
