@@ -110,6 +110,10 @@ const String kOptionAdminPresenceDevices = "admin-presence-devices";
 // migration/back-compat only). See lib/models/admin_presence_keypair.dart.
 const String kOptionAdminPresencePrivateKeyEnc = "admin-presence-private-key-enc";
 const String kOptionAdminPresencePublicKey = "admin-presence-public-key";
+// Admin-presence customization: persists the user's auto-refresh preference
+// for the admin online-devices pane across app restarts. Defaults to enabled
+// (auto refresh on) when unset/empty.
+const String kOptionAdminPresenceAutoRefresh = "admin-presence-auto-refresh";
 const String kOptionDirectServer = "direct-server";
 const String kOptionDirectAccessPort = "direct-access-port";
 const String kOptionAllowAutoDisconnect = "allow-auto-disconnect";

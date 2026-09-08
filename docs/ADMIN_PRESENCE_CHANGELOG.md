@@ -4,6 +4,17 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 Entries are grouped by date, newest first.
 
+## v2.1.0 (2026-09-08)
+
+### Changed
+
+- Removed the "Server: `<ip>`:`<port>`" text from the Admin online devices pane header; the online-device count now shows left-aligned on its own.
+- Added an "Auto refresh" control (refresh icon + checkbox, enabled by default) to the pane header. The 5-second periodic refresh now honors this toggle, and the user's choice persists locally across restarts.
+
+### Investigated (no change)
+
+- Investigated why a device's default editable display name repeats its RustDesk ID instead of showing its hostname. Root cause: the upstream `RegisterPeer` rendezvous message carries only `id`/`serial`, never a hostname, so the server has no hostname to hand back for devices the admin client has never connected to directly. The existing local-cache fallback (Recent Sessions/Favorites/LAN/Address Book) remains the best available behavior without forking the shared `hbb_common` protocol submodule; kept as-is per product decision.
+
 ## v2.0.0 (2026-09-08)
 
 ### Breaking changes

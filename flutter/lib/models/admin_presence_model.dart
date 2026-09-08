@@ -139,6 +139,21 @@ class AdminPresenceModel with ChangeNotifier {
   bool get hasEnrolledKey =>
       bind.mainGetLocalOption(key: kOptionAdminPresencePublicKey).isNotEmpty;
 
+  /// Admin-presence customization: whether the device list should
+  /// auto-refresh periodically. Persisted locally; defaults to enabled.
+  bool get autoRefresh {
+    final v = bind.mainGetLocalOption(key: kOptionAdminPresenceAutoRefresh);
+    return v.isEmpty || v == 'Y';
+  }
+
+  set autoRefresh(bool value) {
+    bind.mainSetLocalOption(
+      key: kOptionAdminPresenceAutoRefresh,
+      value: value ? 'Y' : 'N',
+    );
+    notifyListeners();
+  }
+
   AdminPresenceModel() {
     devices = _loadCachedDevices();
   }

@@ -11,6 +11,7 @@ This repository is a **custom fork of the official [rustdesk/rustdesk](https://g
   - Online/offline state, with missing devices retained as greyed-out stale entries that show offline duration.
   - An **X** action to remove stale/offline rows you no longer want tracked locally.
   - The same list/tile/grid visualization switch used by the standard peer tabs.
+  - An **Auto refresh** toggle (refresh icon + checkbox) next to the online-device count; enabled by default and remembered locally when turned off.
 - Selecting an **online** device runs RustDesk's normal, unmodified connection flow for that device ID. Target-side password, consent, and permission checks are never bypassed.
 - **As of v2.0.0, authentication is per-device ed25519 key enrollment only.** On the server, run `rustdesk-utils genadminkey <label>` once for each admin client, then paste the printed private key into **Settings > Network > Admin Presence** and click **Enroll key**. The key fingerprint shown in the client matches `rustdesk-utils listadminkeys` for verification.
 - **As of v2.0.0, there is no separate admin server address field.** The client reuses the host already configured for the RustDesk **ID Server** (`custom-rendezvous-server`) and always targets the admin API on fixed port `21114`. The Admin Presence dialog shows that resolved address read-only.

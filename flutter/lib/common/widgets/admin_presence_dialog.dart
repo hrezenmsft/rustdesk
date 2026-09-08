@@ -41,7 +41,7 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
       if (mounted) setState(() {});
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (mounted && !_model.loading) {
+      if (mounted && !_model.loading && _model.autoRefresh) {
         _refreshFromConfig();
       }
     });
@@ -143,9 +143,9 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
         Row(
           children: [
             getOnline(8, model.serverOnline),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
               child: Text(
-                '${translate('Server')}: ${model.server}  -  '
                 '$onlineCount/${model.devices.length} ${translate('Online')}',
                 style: Theme.of(context).textTheme.titleMedium,
                 overflow: TextOverflow.ellipsis,
@@ -169,6 +169,38 @@ class _AdminPresencePaneState extends State<AdminPresencePane> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
+            const Spacer(),
+            // Admin-presence customization: lets the administrator toggle
+            // periodic auto-refresh of the device list. The choice is
+            // persisted locally and defaults to enabled.
+            Tooltip(
+              message: translate('Auto refresh'),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () =>
+                    setState(() => model.autoRefresh = !model.autoRefresh),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: model.autoRefresh,
+                        onChanged: (v) =>
+                            setState(() => model.autoRefresh = v ?? true),
+                      ),
+                      Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: model.autoRefresh
+                            ? null
+                            : Theme.of(context).disabledColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
         Expanded(
