@@ -61,3 +61,7 @@ flutter/web/
 
 # Portable build metadata (auto-generated timestamp)
 libs/portable/app_metadata.toml
+
+# Local packaged release artifacts (attached to GitHub Releases, not committed)
+libs/portable/*.zip
+libs/portable/*-install.exe

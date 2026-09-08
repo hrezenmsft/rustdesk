@@ -113,23 +113,31 @@ This fork uses RustDesk's existing self-extracting "portable" installer packer (
    ```
 4. Rename the output to match the versioned convention:
    ```powershell
-   Copy-Item target\release\rustdesk-portable-packer.exe ".\rustdesk-<version>-install.exe"
+   Copy-Item target\release\rustdesk-portable-packer.exe ".\rustdeskadmin-client-<version>-install.exe"
    ```
-5. Validate on a disposable machine or VM snapshot before shipping.
+5. Optionally, also produce a portable (no-install) zip package straight from the Release folder — extract and run `rustdesk.exe` directly, no admin rights or install step required:
+   ```powershell
+   Compress-Archive -Path "flutter\build\windows\x64\runner\Release\*" -DestinationPath ".\rustdeskadmin-client-<version>-portable.zip" -CompressionLevel Optimal
+   ```
+6. Validate on a disposable machine or VM snapshot before shipping.
 
 ## How to Deploy
 
 ### Production release package (recommended — no local build required)
 
-Every `vX.Y.Z` tag on this repo produces a self-extracting Windows installer attached to the GitHub release: `rustdeskadmin-client-<version>-install.exe`.
+Every `vX.Y.Z` tag on this repo produces two Windows packages attached to the GitHub release:
+- `rustdeskadmin-client-<version>-install.exe` — self-extracting installer (installs to `C:\Program Files\RustDesk`).
+- `rustdeskadmin-client-<version>-portable.zip` — portable, no-install package; extract anywhere and run `rustdesk.exe` directly.
 
-1. **Download the installer** from the Releases page:
+1. **Download a package** from the Releases page:
    ```powershell
    gh release list --repo hrezenmsft/rustdeskadmin-client --limit 1
    gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-install.exe" --dir .
+   # or, for the portable package:
+   gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-portable.zip" --dir .
    ```
    or download it manually from `https://github.com/hrezenmsft/rustdeskadmin-client/releases`.
-2. **Run the installer** on the target Windows machine.
+2. **Run the installer**, or **extract the portable zip** and run `rustdesk.exe` from the extracted folder, on the target Windows machine.
 3. **Point the client at your server** in Settings > Network by setting the ID/Relay server address and key to your `rustdeskadmin-server` deployment.
 4. **Open Settings > Network > Admin Presence**. The dialog should show the resolved admin API address using the same host as the configured ID Server with fixed port `21114`. Enroll the private key printed by `rustdesk-utils genadminkey <label>`.
 5. **Verify** that the admin icon opens the Admin Devices pane, the pane refreshes automatically, and selecting an online device launches the normal connection flow.
