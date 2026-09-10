@@ -28,15 +28,17 @@ Push only to your forks. Keep upstream remotes fetch-only or set their push URL 
 
 ## 3. Release v2.2.1
 
-Release **v2.2.1** packages the **2.2.1** branding/version patch. Consult the [release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published asset availability. The completed application build and all three packages use build commit `458b4e96281041b40ef4197f1ae48c4f052386af`; the final tag may add documentation-only changes while retaining identical runtime/build/package source.
+Release **v2.2.1** was published as **Latest** on **2026-09-10 UTC** (release ID `386695121`, neither draft nor prerelease). The [release notes](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) provide downloads and SHA-256 checksums. Tag commit `f326ef46b1bcf19941cafc62723ad8b901a3b41a` adds **documentation only** to application build commit `458b4e96281041b40ef4197f1ae48c4f052386af`; the comparison verified no runtime/build/package-source changes. Later documentation commits must not move the release tag.
 
 - Display product: **RustDeskAdmin - RustDesk Fork**; retain upstream copyright and add Henrique Rezende.
-- Expected assets: `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, `rustdeskadmin-client-2.2.1-portable.zip`.
-- The application was built once, then its frozen 91-file Release payload was reused for all three formats. MSI and ZIP hashes match all 91 files; the SFX contains the complete 24,093,932-byte frozen data blob. Runtime/SFX version: `2.2.1`; runner resource: `2.2.1+0`; MSI: `2.2.1.0`. Run client and server builds sequentially, never concurrently.
+- Exactly three published assets: `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, `rustdeskadmin-client-2.2.1-portable.zip`.
+- The application was built once (Rust library: 51m34s; Flutter: 415.3s), then its frozen 91-file Release payload was reused for all three formats. MSI and ZIP hashes match all 91 files; the SFX contains the complete 24,093,932-byte frozen data blob. Runtime/SFX version: `2.2.1`; runner resource: `2.2.1+0`; MSI: `2.2.1.0`. Run client and server builds sequentially, never concurrently.
 - All Windows artifacts remain unsigned. Never advise bypassing Smart App Control; branding does not establish a trusted signer.
 - Preserve `rustdesk.exe` and compatibility-sensitive internal names. Do not include a `RustDeskDeploy.exe` wrapper.
-- Publish the new release as Latest only after source/artifact verification. Verify all new downloads **before** removing the three assets from old client `v2.2.0`; retain the old tag and source archives. The paired server has its own four-asset `v2.0.1` patch and a separate 17-asset cleanup of `v2.0.0`.
-- Old-asset retirement is pending. Record publication, download verification, and actual retirement results only when completed. Do not rebuild or upgrade the existing local Docker deployment as part of the package release.
+- SFX `CompanyName` is intentionally blank; the MSI upstream contact is unchanged. Validation covered runtime `--version`, package/static/signature/hash checks, not an actual MSI installation or installation smoke test.
+- All three packages were downloaded at draft stage and again via public HTTPS after publication; every hash matched the local original and GitHub SHA-256 digest.
+- Retirement completed after verification: all three old client `v2.2.0` assets and all 17 paired server `v2.0.0` assets were removed after verified backups. Old release pages, automatic source archives, and tags remain; descriptions link to the replacements. Client old tag object `a27b20d72d0e9b07bd25a9d3d2692ed90db88edc` is unchanged. The paired server `v2.0.1` is also published as Latest with exactly four assets.
+- All temporarily paused GitHub workflow states were restored to their originals; no unwanted CI rebuilds, server images, or out-of-scope packages were triggered. This package release made no Docker deployment changes.
 
 The current client state is:
 

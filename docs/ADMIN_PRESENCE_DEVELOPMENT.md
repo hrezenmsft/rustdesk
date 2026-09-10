@@ -82,9 +82,11 @@ The client must never read a shared file or database directly.
 
 ### Release build: v2.2.1
 
-Release **v2.2.1** uses source/runtime version **2.2.1**, runner resource **2.2.1+0**, MSI **2.2.1.0**, and SFX **2.2.1**. Check the [release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published assets. The application was built once from `458b4e96281041b40ef4197f1ae48c4f052386af` (Rust: 51m34s; Flutter: 415.3s). The final tag may include documentation-only follow-up commits; runtime/build/package source must remain identical to the build commit. Do not merely rename older binaries. Product name: **RustDeskAdmin - RustDesk Fork**, with upstream copyright retained and Henrique Rezende's attribution added; keep `rustdesk.exe` and compatibility-sensitive internal names.
+Release **v2.2.1** was published as **Latest** on **2026-09-10 UTC**, neither draft nor prerelease, using source/runtime version **2.2.1**, runner resource **2.2.1+0**, MSI **2.2.1.0**, and SFX **2.2.1**. See the [release notes](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for downloads and SHA-256 checksums. The application was built once from `458b4e96281041b40ef4197f1ae48c4f052386af` (Rust: 51m34s; Flutter: 415.3s). Tag commit `f326ef46b1bcf19941cafc62723ad8b901a3b41a` adds documentation only; runtime/build/package source was verified unchanged from the build commit. Do not merely rename older binaries. Product name: **RustDeskAdmin - RustDesk Fork**, with upstream copyright retained and Henrique Rezende's attribution added; keep `rustdesk.exe` and compatibility-sensitive internal names.
 
 All three packages reuse the frozen 91-file payload. MSI and ZIP hashes match all 91 files; the SFX contains the complete 24,093,932-byte frozen data blob. SFX `CompanyName` is intentionally blank and the MSI upstream contact is unchanged.
+
+All three draft-stage downloads and subsequent public HTTPS downloads matched the local originals and GitHub SHA-256 digests. After verification and backup, all three old v2.2.0 assets were retired; the release page, unchanged tag, and automatic source archives remain, with replacement links in the description. Temporarily paused workflow states were restored without unwanted rebuilds. Validation covered runtime `--version` and package/static/signature/hash checks; no real MSI install or installation smoke test was performed.
 
 Build the client application once (Rust library followed by Flutter runner), then reuse that exact completed payload for MSI, SFX, and portable ZIP packaging. Run this build and the server build **sequentially**. Packaging helpers may be built separately; they do not justify rebuilding the application per format.
 
@@ -141,13 +143,13 @@ For this release, use `<version> = 2.2.1` throughout. All three assets are requi
    Remove-Item -Recurse -Force rustdesk
    ```
    The MSI supports silent/unattended install (`msiexec /i rustdeskadmin-client-<version>-x64.msi /qn`) and Group Policy/SCCM distribution.
-7. Validate package contents, version/product metadata, unsigned status, and installation/portable startup on an appropriate test machine before shipping. After publication as Latest, verify all three downloads before removing the three old v2.2.0 assets. Keep the old tag/source archives and update the release status in the docs only after verification.
+7. For future releases, validate package contents, version/product metadata, unsigned status, and installation/portable startup on an appropriate test machine before shipping. After publication as Latest, verify every download before retiring superseded assets; keep old tags/source archives. The completed v2.2.1 verification and retirement milestone is recorded above; installation smoke testing was not part of that validation.
 
 ## How to Deploy
 
 ### Production release package (recommended — no local build required)
 
-The v2.2.1 Windows asset set is listed below. These commands require published asset availability on the [v2.2.1 release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1):
+The three published v2.2.1 Windows assets are listed below. Download them and compare SHA-256 checksums with the [release notes](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1):
 - `rustdeskadmin-client-2.2.1-install.exe` — self-extracting installer (installs to `C:\Program Files\RustDesk`).
 - `rustdeskadmin-client-2.2.1-x64.msi` — native MSI installer; suited for silent/unattended install and Group Policy/SCCM distribution.
 - `rustdeskadmin-client-2.2.1-portable.zip` — portable, no-install package; extract anywhere and run `rustdesk.exe` directly.
