@@ -2,12 +2,12 @@
 
 This repository is a **custom fork of the official [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) client**, part of the `RustDeskAdmin` project (paired with [`rustdeskadmin-server`](https://github.com/hrezenmsft/rustdeskadmin-server)). This README describes only what is different in this fork.
 
-### Patch release status — PREPARING v2.2.1
+### Release v2.2.1
 
-The approved client patch is **2.2.1**, with source versions and release tag required to match **`v2.2.1`**. It is not published yet; GitHub Latest remains **v2.2.0**.
+Release **v2.2.1** packages the **2.2.1** client. Check the [v2.2.1 release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published asset availability. Binaries were built from `458b4e96281041b40ef4197f1ae48c4f052386af`; the final tag may include documentation-only follow-up changes without changing the build's runtime/package source.
 
 - Product name: **RustDeskAdmin - RustDesk Fork**. Preserve upstream copyright notices and add Henrique Rezende's fork attribution.
-- Planned Windows x64 assets: `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, and `rustdeskadmin-client-2.2.1-portable.zip`.
+- Windows x64 asset set: `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, and `rustdeskadmin-client-2.2.1-portable.zip`.
 - All Windows artifacts are **unsigned**. Product metadata is not a signing identity; Windows security policy may block execution. Do not disable or bypass Smart App Control.
 - Keep `rustdesk.exe` and existing internal/service names for compatibility. No `RustDeskDeploy.exe` wrapper is included.
 - The patch changes release branding/version metadata, not the existing admin API or connection security behavior.
@@ -42,7 +42,7 @@ The approved client patch is **2.2.1**, with source versions and release tag req
 1. **Settings > Network > ID/Relay Server** to point at your `rustdeskadmin-server` deployment.
 2. **Settings > Network > Admin Presence** to confirm the resolved admin API address (`<your-id-server-host>:21114`) and enroll the private key printed by `rustdesk-utils genadminkey <label>`.
 
-A native MSI installer (`rustdeskadmin-client-<version>-x64.msi`) is also available with v2.2.0 and planned for v2.2.1, suited for silent/unattended installs (`msiexec /i rustdeskadmin-client-<version>-x64.msi /qn`) and Group Policy/SCCM distribution. A portable, no-install package (`rustdeskadmin-client-<version>-portable.zip`) is available too — extract it anywhere and run `rustdesk.exe` directly. Use the published release's asset list; v2.2.1 downloads are not yet available. After new downloads are verified, the three v2.2.0 binary assets are scheduled for removal; its tag and source archives will remain.
+The v2.2.1 asset set includes a native MSI installer (`rustdeskadmin-client-2.2.1-x64.msi`), suited for silent/unattended installs (`msiexec /i rustdeskadmin-client-2.2.1-x64.msi /qn`) and Group Policy/SCCM distribution, and a portable, no-install package (`rustdeskadmin-client-2.2.1-portable.zip`) — extract it anywhere and run `rustdesk.exe` directly. Check the [release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for downloads. Retirement of the three v2.2.0 binary assets remains pending publication and verification of all new downloads; preserve its tag and source archives.
 
 See **[docs/ADMIN_PRESENCE_DEVELOPMENT.md § Production release package](docs/ADMIN_PRESENCE_DEVELOPMENT.md#production-release-package-recommended--no-local-build-required)** for the full walkthrough, including upgrading and uninstalling.
 

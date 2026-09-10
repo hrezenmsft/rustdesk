@@ -26,17 +26,17 @@ rustdeskadmin-server/
 
 Push only to your forks. Keep upstream remotes fetch-only or set their push URL to a disabled value.
 
-## 3. Current release state: PREPARING v2.2.1
+## 3. Release v2.2.1
 
-GitHub Latest remains **v2.2.0**. The approved **2.2.1** branding/version patch is being prepared, not published; source metadata, packaged binary versions, and tag **`v2.2.1`** must agree before release.
+Release **v2.2.1** packages the **2.2.1** branding/version patch. Consult the [release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published asset availability. The completed application build and all three packages use build commit `458b4e96281041b40ef4197f1ae48c4f052386af`; the final tag may add documentation-only changes while retaining identical runtime/build/package source.
 
 - Display product: **RustDeskAdmin - RustDesk Fork**; retain upstream copyright and add Henrique Rezende.
 - Expected assets: `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, `rustdeskadmin-client-2.2.1-portable.zip`.
-- Build the application once and reuse that completed Release payload for all three formats. Run client and server builds sequentially, never concurrently.
+- The application was built once, then its frozen 91-file Release payload was reused for all three formats. MSI and ZIP hashes match all 91 files; the SFX contains the complete 24,093,932-byte frozen data blob. Runtime/SFX version: `2.2.1`; runner resource: `2.2.1+0`; MSI: `2.2.1.0`. Run client and server builds sequentially, never concurrently.
 - All Windows artifacts remain unsigned. Never advise bypassing Smart App Control; branding does not establish a trusted signer.
 - Preserve `rustdesk.exe` and compatibility-sensitive internal names. Do not include a `RustDeskDeploy.exe` wrapper.
 - Publish the new release as Latest only after source/artifact verification. Verify all new downloads **before** removing the three assets from old client `v2.2.0`; retain the old tag and source archives. The paired server has its own four-asset `v2.0.1` patch and a separate 17-asset cleanup of `v2.0.0`.
-- Finalize this status, README, development guide, changelog, and shared local memory after publication and download verification, not before. Do not rebuild or upgrade the existing local Docker deployment as part of the package release.
+- Old-asset retirement is pending. Record publication, download verification, and actual retirement results only when completed. Do not rebuild or upgrade the existing local Docker deployment as part of the package release.
 
 The current client state is:
 

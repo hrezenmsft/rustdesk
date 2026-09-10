@@ -80,9 +80,11 @@ The client must never read a shared file or database directly.
 
 ## How to Build
 
-### Approved patch build: 2.2.1 (PREPARING)
+### Release build: v2.2.1
 
-GitHub Latest is still **v2.2.0**; the approved patch is not published. Before the release build, align source/package versions to **2.2.1** and ensure the final source commit is the one tagged **`v2.2.1`**. Do not merely rename older binaries. Use product name **RustDeskAdmin - RustDesk Fork**, retain upstream copyright, and add Henrique Rezende's attribution; keep `rustdesk.exe` and compatibility-sensitive internal names.
+Release **v2.2.1** uses source/runtime version **2.2.1**, runner resource **2.2.1+0**, MSI **2.2.1.0**, and SFX **2.2.1**. Check the [release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published assets. The application was built once from `458b4e96281041b40ef4197f1ae48c4f052386af` (Rust: 51m34s; Flutter: 415.3s). The final tag may include documentation-only follow-up commits; runtime/build/package source must remain identical to the build commit. Do not merely rename older binaries. Product name: **RustDeskAdmin - RustDesk Fork**, with upstream copyright retained and Henrique Rezende's attribution added; keep `rustdesk.exe` and compatibility-sensitive internal names.
+
+All three packages reuse the frozen 91-file payload. MSI and ZIP hashes match all 91 files; the SFX contains the complete 24,093,932-byte frozen data blob. SFX `CompanyName` is intentionally blank and the MSI upstream contact is unchanged.
 
 Build the client application once (Rust library followed by Flutter runner), then reuse that exact completed payload for MSI, SFX, and portable ZIP packaging. Run this build and the server build **sequentially**. Packaging helpers may be built separately; they do not justify rebuilding the application per format.
 
@@ -102,7 +104,7 @@ Build the client application once (Rust library followed by Flutter runner), the
 
 This fork ships three package formats: RustDesk's existing self-extracting "portable" installer packer (`libs/portable`), a plain portable zip, and a native MSI built from the also-upstream `res/msi` WiX v4 project. There is no Inno Setup step.
 
-For the approved patch, use `<version> = 2.2.1` throughout. All three assets are required: `rustdeskadmin-client-2.2.1-install.exe`, `rustdeskadmin-client-2.2.1-portable.zip`, and `rustdeskadmin-client-2.2.1-x64.msi`. Do not include `RustDeskDeploy.exe`. Preserve attribution/release notices in the package payload. Use a fresh MSI packaging staging tree containing the approved fork changes: preprocessing generates entries and must not be rerun over an already-generated tree. Never reset `res/msi` in the source worktree to discard pending branding changes.
+For this release, use `<version> = 2.2.1` throughout. All three assets are required: `rustdeskadmin-client-2.2.1-install.exe`, `rustdeskadmin-client-2.2.1-portable.zip`, and `rustdeskadmin-client-2.2.1-x64.msi`. Do not include `RustDeskDeploy.exe`. Preserve attribution/release notices in the package payload. Use a fresh MSI packaging staging tree containing the committed fork changes: preprocessing generates entries and must not be rerun over an already-generated tree. Never reset `res/msi` in the source worktree to discard fork branding.
 
 1. Build the Rust release library and the Flutter Windows app as in **How to Build** above.
 2. Build the virtual-display helper DLL and copy it into the Release folder:
@@ -145,21 +147,21 @@ For the approved patch, use `<version> = 2.2.1` throughout. All three assets are
 
 ### Production release package (recommended — no local build required)
 
-The approved v2.2.1 release will provide these three Windows packages after publication (currently PREPARING; v2.2.0 remains Latest):
-- `rustdeskadmin-client-<version>-install.exe` — self-extracting installer (installs to `C:\Program Files\RustDesk`).
-- `rustdeskadmin-client-<version>-x64.msi` — native MSI installer; suited for silent/unattended install and Group Policy/SCCM distribution.
-- `rustdeskadmin-client-<version>-portable.zip` — portable, no-install package; extract anywhere and run `rustdesk.exe` directly.
+The v2.2.1 Windows asset set is listed below. These commands require published asset availability on the [v2.2.1 release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1):
+- `rustdeskadmin-client-2.2.1-install.exe` — self-extracting installer (installs to `C:\Program Files\RustDesk`).
+- `rustdeskadmin-client-2.2.1-x64.msi` — native MSI installer; suited for silent/unattended install and Group Policy/SCCM distribution.
+- `rustdeskadmin-client-2.2.1-portable.zip` — portable, no-install package; extract anywhere and run `rustdesk.exe` directly.
 
 1. **Download a package** from the Releases page:
    ```powershell
-   gh release list --repo hrezenmsft/rustdeskadmin-client --limit 1
-   gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-install.exe" --dir .
+   gh release view v2.2.1 --repo hrezenmsft/rustdeskadmin-client
+   gh release download v2.2.1 --repo hrezenmsft/rustdeskadmin-client --pattern "*-install.exe" --dir .
    # or, for the MSI:
-   gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-x64.msi" --dir .
+   gh release download v2.2.1 --repo hrezenmsft/rustdeskadmin-client --pattern "*-x64.msi" --dir .
    # or, for the portable package:
-   gh release download <tag> --repo hrezenmsft/rustdeskadmin-client --pattern "*-portable.zip" --dir .
+   gh release download v2.2.1 --repo hrezenmsft/rustdeskadmin-client --pattern "*-portable.zip" --dir .
    ```
-   or download it manually from `https://github.com/hrezenmsft/rustdeskadmin-client/releases`.
+   or download it manually from `https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1`.
 2. **Run the installer** (`.exe` or `msiexec /i <file>.msi`), or **extract the portable zip** and run `rustdesk.exe` from the extracted folder, on the target Windows machine.
 3. **Point the client at your server** in Settings > Network by setting the ID/Relay server address and key to your `rustdeskadmin-server` deployment.
 4. **Open Settings > Network > Admin Presence**. The dialog should show the resolved admin API address using the same host as the configured ID Server with fixed port `21114`. Enroll the private key printed by `rustdesk-utils genadminkey <label>`.

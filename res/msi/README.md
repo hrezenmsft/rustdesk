@@ -1,12 +1,12 @@
 # RustDesk msi project
 
-## RustDeskAdmin patch packaging
+## RustDeskAdmin v2.2.1 packaging
 
-**v2.2.1 is PREPARING, not published**; GitHub Latest remains v2.2.0. Produce `rustdeskadmin-client-2.2.1-x64.msi` from the same already-built Windows x64 application payload used for the SFX installer and portable ZIP. Set source/MSI versions to `2.2.1`, matching tag `v2.2.1`; use product name **RustDeskAdmin - RustDesk Fork**, retain upstream copyright, and add Henrique Rezende's attribution.
+Release **v2.2.1** includes `rustdeskadmin-client-2.2.1-x64.msi` (MSI version **2.2.1.0**, using `-v 2.2.1 --revision-version 0`) alongside `rustdeskadmin-client-2.2.1-install.exe` and `rustdeskadmin-client-2.2.1-portable.zip`. Check the [release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published asset availability. All three packages reuse the frozen 91-file Windows x64 payload built from `458b4e96281041b40ef4197f1ae48c4f052386af`; the final tag may add documentation-only changes. MSI and ZIP hashes match all 91 payload files. Product name: **RustDeskAdmin - RustDesk Fork**, retaining upstream copyright and adding Henrique Rezende's attribution. The MSI upstream contact remains unchanged; SFX `CompanyName` is intentionally blank.
 
 Keep `rustdesk.exe` and internal compatibility names. The MSI and its payload are unsigned; product/manufacturer metadata is not a trusted signer. Do not bypass Smart App Control. Do not package a `RustDeskDeploy.exe` wrapper.
 
-Run preprocessing once in a fresh packaging staging tree containing the approved fork changes, not over an already-generated tree. Do not reset the source `res/msi` tree and discard pending branding edits. See [the fork packaging guide](../../docs/ADMIN_PRESENCE_DEVELOPMENT.md#how-to-package-a-windows-installer) for the complete sequence.
+Run preprocessing once in a fresh packaging staging tree containing the committed fork changes, not over an already-generated tree. Do not reset the source `res/msi` tree and discard fork branding. See [the fork packaging guide](../../docs/ADMIN_PRESENCE_DEVELOPMENT.md#how-to-package-a-windows-installer) for the complete sequence.
 
 Use Visual Studio 2022 to compile this project.
 

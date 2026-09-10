@@ -4,14 +4,14 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 Entries are grouped by date, newest first.
 
-## v2.2.1 — PREPARING (2026-09-10, not published)
+## v2.2.1 (2026-09-10)
 
-### Planned release metadata and packaging
+### Release metadata and packaging
 
-- Align source, Windows executable/installer metadata, and package versions to **2.2.1**, matching tag **`v2.2.1`**.
+- Source/runtime and SFX version: **2.2.1**; Windows runner resource: **2.2.1+0**; MSI version: **2.2.1.0**.
 - Use product name **RustDeskAdmin - RustDesk Fork**, retaining upstream copyright and adding Henrique Rezende's fork attribution; keep `rustdesk.exe` and compatibility-sensitive internal names unchanged.
-- Build the application once and reuse its output for `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, and `rustdeskadmin-client-2.2.1-portable.zip`. All Windows artifacts remain unsigned; no `RustDeskDeploy.exe` wrapper is included.
-- GitHub Latest remains **v2.2.0** until the new release is published. Only after verifying the new downloads, remove the three old v2.2.0 binary assets while retaining its tag and source archives.
+- Built the application once at `458b4e96281041b40ef4197f1ae48c4f052386af` and reused its frozen 91-file payload for `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, and `rustdeskadmin-client-2.2.1-portable.zip`. The final tag may add documentation-only changes. All Windows artifacts remain unsigned; no `RustDeskDeploy.exe` wrapper is included. SFX `CompanyName` remains intentionally blank; the MSI upstream contact is unchanged.
+- Consult the [v2.2.1 release page](https://github.com/hrezenmsft/rustdeskadmin-client/releases/tag/v2.2.1) for published downloads. Retirement of the three old v2.2.0 binary assets is pending publication and verification of the new downloads; retain the old tag and source archives.
 - No admin API, enrollment, or ordinary RustDesk connection behavior change is intended.
 
 ## v2.2.0 (2026-09-08)
