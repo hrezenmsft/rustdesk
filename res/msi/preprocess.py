@@ -81,7 +81,13 @@ def make_parser():
         help='Connection type, e.g. "incoming", "outgoing". Default is empty, means incoming-outgoing',
     )
     parser.add_argument(
-        "--app-name", type=str, default="RustDesk", help="The app name."
+        "--app-name", type=str, default="RustDesk", help="The internal app name."
+    )
+    parser.add_argument(
+        "--display-name",
+        type=str,
+        default="RustDeskAdmin - RustDesk Fork",
+        help="The product name shown by Windows Installer.",
     )
     parser.add_argument(
         "-v", "--version", type=str, default="", help="The app version."
@@ -93,7 +99,7 @@ def make_parser():
         "-m",
         "--manufacturer",
         type=str,
-        default="Purslane Tech Pte. Ltd.",
+        default="Henrique Rezende",
         help="The app manufacturer.",
     )
     return parser
@@ -250,7 +256,8 @@ def gen_pre_vars(args, dist_dir):
             f'{indent}<?define Version="{g_version}" ?>\n',
             f'{indent}<?define Manufacturer="{args.manufacturer}" ?>\n',
             f'{indent}<?define Product="{args.app_name}" ?>\n',
-            f'{indent}<?define Description="{args.app_name} Installer" ?>\n',
+            f'{indent}<?define DisplayName="{args.display_name}" ?>\n',
+            f'{indent}<?define Description="{args.display_name} Installer" ?>\n',
             f'{indent}<?define ProductLower="{args.app_name.lower()}" ?>\n',
             f'{indent}<?define RegKeyRoot=".$(var.ProductLower)" ?>\n',
             f'{indent}<?define RegKeyInstall="$(var.RegKeyRoot)\\Install" ?>\n',

@@ -4,6 +4,16 @@ All notable changes to this custom administrator-presence feature are recorded h
 
 Entries are grouped by date, newest first.
 
+## v2.2.1 — PREPARING (2026-09-10, not published)
+
+### Planned release metadata and packaging
+
+- Align source, Windows executable/installer metadata, and package versions to **2.2.1**, matching tag **`v2.2.1`**.
+- Use product name **RustDeskAdmin - RustDesk Fork**, retaining upstream copyright and adding Henrique Rezende's fork attribution; keep `rustdesk.exe` and compatibility-sensitive internal names unchanged.
+- Build the application once and reuse its output for `rustdeskadmin-client-2.2.1-x64.msi`, `rustdeskadmin-client-2.2.1-install.exe`, and `rustdeskadmin-client-2.2.1-portable.zip`. All Windows artifacts remain unsigned; no `RustDeskDeploy.exe` wrapper is included.
+- GitHub Latest remains **v2.2.0** until the new release is published. Only after verifying the new downloads, remove the three old v2.2.0 binary assets while retaining its tag and source archives.
+- No admin API, enrollment, or ordinary RustDesk connection behavior change is intended.
+
 ## v2.2.0 (2026-09-08)
 
 ### Fixed

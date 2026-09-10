@@ -1,10 +1,10 @@
 [package]
 name = "rustdesk"
-version = "1.5.0"
-authors = ["rustdesk <info@rustdesk.com>"]
+version = "2.2.1"
+authors = ["Henrique Rezende <https://github.com/hrezenmsft>"]
 edition = "2021"
 build= "build.rs"
-description = "RustDesk Remote Desktop"
+description = "RustDeskAdmin remote desktop client, a fork of RustDesk."
 default-run = "rustdesk"
 rust-version = "1.75"
 
@@ -233,9 +233,9 @@ webrtc-util = { git = "https://github.com/rustdesk-org/webrtc", rev = "b221f13b1
 webrtc-sctp = { git = "https://github.com/rustdesk-org/webrtc", rev = "b221f13b1d6f21fbce09f9f63096be27dd392265" }
 
 [package.metadata.winres]
-LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."
-ProductName = "RustDesk"
-FileDescription = "RustDesk Remote Desktop"
+LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved. Copyright © 2026 Henrique Rezende. RustDeskAdmin fork by Henrique Rezende. Based on RustDesk; upstream copyright notices retained."
+ProductName = "RustDeskAdmin - RustDesk Fork"
+FileDescription = "RustDeskAdmin remote desktop client, a fork of RustDesk."
 OriginalFilename = "rustdesk.exe"
 
 [target.'cfg(target_os="windows")'.build-dependencies]

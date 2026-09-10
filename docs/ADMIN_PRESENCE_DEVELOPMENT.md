@@ -80,6 +80,12 @@ The client must never read a shared file or database directly.
 
 ## How to Build
 
+### Approved patch build: 2.2.1 (PREPARING)
+
+GitHub Latest is still **v2.2.0**; the approved patch is not published. Before the release build, align source/package versions to **2.2.1** and ensure the final source commit is the one tagged **`v2.2.1`**. Do not merely rename older binaries. Use product name **RustDeskAdmin - RustDesk Fork**, retain upstream copyright, and add Henrique Rezende's attribution; keep `rustdesk.exe` and compatibility-sensitive internal names.
+
+Build the client application once (Rust library followed by Flutter runner), then reuse that exact completed payload for MSI, SFX, and portable ZIP packaging. Run this build and the server build **sequentially**. Packaging helpers may be built separately; they do not justify rebuilding the application per format.
+
 - Rust library only: `cargo build --locked --features flutter,hwcodec --lib` (add `--release` for the release profile).
 - Full Windows Flutter app:
   ```powershell
@@ -90,11 +96,13 @@ The client must never read a shared file or database directly.
   Output: `flutter/build/windows/x64/runner/Release/rustdesk.exe` and supporting DLLs.
 - Static analysis: `flutter analyze` from the `flutter/` directory.
 - If you clean `target/` or `flutter/build/`, rebuild the Rust release library **before** `flutter build windows --release`.
-- If a plugin DLL in `flutter/build/windows/x64/runner/Release/` fails to load with Windows error `0xc0e90002` (`STATUS_INVALID_IMAGE_HASH`), the local CMake build-tree cache for that plugin is likely corrupted. Delete the plugin's build directory and generated DLL, then rerun `flutter build windows --release`.
+- All Windows artifacts are unsigned. If loading fails with `0xc0e90002` (`STATUS_INVALID_IMAGE_HASH`), inspect Windows Code Integrity/security-policy diagnostics and artifact integrity rather than assuming a corrupt build cache. Do not bypass Smart App Control or other execution controls.
 
 ## How to Package a Windows Installer
 
 This fork ships three package formats: RustDesk's existing self-extracting "portable" installer packer (`libs/portable`), a plain portable zip, and a native MSI built from the also-upstream `res/msi` WiX v4 project. There is no Inno Setup step.
+
+For the approved patch, use `<version> = 2.2.1` throughout. All three assets are required: `rustdeskadmin-client-2.2.1-install.exe`, `rustdeskadmin-client-2.2.1-portable.zip`, and `rustdeskadmin-client-2.2.1-x64.msi`. Do not include `RustDeskDeploy.exe`. Preserve attribution/release notices in the package payload. Use a fresh MSI packaging staging tree containing the approved fork changes: preprocessing generates entries and must not be rerun over an already-generated tree. Never reset `res/msi` in the source worktree to discard pending branding changes.
 
 1. Build the Rust release library and the Flutter Windows app as in **How to Build** above.
 2. Build the virtual-display helper DLL and copy it into the Release folder:
@@ -115,11 +123,11 @@ This fork ships three package formats: RustDesk's existing self-extracting "port
    ```powershell
    Copy-Item target\release\rustdesk-portable-packer.exe ".\rustdeskadmin-client-<version>-install.exe"
    ```
-5. Optionally, also produce a portable (no-install) zip package straight from the Release folder — extract and run `rustdesk.exe` directly, no admin rights or install step required:
+5. Produce a portable (no-install) zip package straight from the same Release folder — extract and run `rustdesk.exe` directly, no admin rights or install step required:
    ```powershell
    Compress-Archive -Path "flutter\build\windows\x64\runner\Release\*" -DestinationPath ".\rustdeskadmin-client-<version>-portable.zip" -CompressionLevel Optimal
    ```
-6. Optionally, also build a native MSI with the WiX v4 project under `res\msi` (requires the .NET SDK; `winget install Microsoft.DotNet.SDK.8`):
+6. Build a native MSI with the WiX v4 project under `res\msi` in the fresh packaging staging tree (requires the .NET SDK; `winget install Microsoft.DotNet.SDK.8`):
    ```powershell
    Copy-Item -Recurse flutter\build\windows\x64\runner\Release rustdesk
    cd res\msi
@@ -128,17 +136,16 @@ This fork ships three package formats: RustDesk's existing self-extracting "port
    & $env:ComSpec /c 'call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=x64 >nul && msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10'
    Copy-Item Package\bin\x64\Release\en-us\Package.msi ..\..\rustdeskadmin-client-<version>-x64.msi
    cd ..\..
-   git checkout -- res/msi
    Remove-Item -Recurse -Force rustdesk
    ```
    The MSI supports silent/unattended install (`msiexec /i rustdeskadmin-client-<version>-x64.msi /qn`) and Group Policy/SCCM distribution.
-7. Validate on a disposable machine or VM snapshot before shipping.
+7. Validate package contents, version/product metadata, unsigned status, and installation/portable startup on an appropriate test machine before shipping. After publication as Latest, verify all three downloads before removing the three old v2.2.0 assets. Keep the old tag/source archives and update the release status in the docs only after verification.
 
 ## How to Deploy
 
 ### Production release package (recommended — no local build required)
 
-Every `vX.Y.Z` tag on this repo produces three Windows packages attached to the GitHub release:
+The approved v2.2.1 release will provide these three Windows packages after publication (currently PREPARING; v2.2.0 remains Latest):
 - `rustdeskadmin-client-<version>-install.exe` — self-extracting installer (installs to `C:\Program Files\RustDesk`).
 - `rustdeskadmin-client-<version>-x64.msi` — native MSI installer; suited for silent/unattended install and Group Policy/SCCM distribution.
 - `rustdeskadmin-client-<version>-portable.zip` — portable, no-install package; extract anywhere and run `rustdesk.exe` directly.

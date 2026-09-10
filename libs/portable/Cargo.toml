@@ -1,8 +1,8 @@
 [package]
 name = "rustdesk-portable-packer"
-version = "1.5.0"
+version = "2.2.1"
 edition = "2021"
-description = "RustDesk Remote Desktop"
+description = "RustDeskAdmin remote desktop client, a fork of RustDesk."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -26,14 +26,12 @@ windows = { version = "0.61", features = [
 native-windows-gui = {version = "1.0", default-features = false, features = ["animation-timer", "image-decoder"]}
 
 [package.metadata.winres]
-LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."
-ProductName = "RustDesk"
+LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved. Copyright © 2026 Henrique Rezende. RustDeskAdmin fork by Henrique Rezende. Based on RustDesk; upstream copyright notices retained."
+ProductName = "RustDeskAdmin - RustDesk Fork"
 OriginalFilename = "rustdesk.exe"
-FileDescription = "RustDesk Remote Desktop"
+FileDescription = "RustDeskAdmin remote desktop client, a fork of RustDesk."
 #ProductVersion = ""
 
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1"
 winapi = { version = "0.3", features = [ "winnt", "pdh", "synchapi" ] }
-
-
